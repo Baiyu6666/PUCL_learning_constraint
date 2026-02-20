@@ -122,7 +122,7 @@ class DS_Policy():
             return M, E, D, gamma
         self.modulated_ds = lambda x: compute_M(x)[0] @ self.nominal_ds(x)
 
-    def modulate_with_NN__with_refer_point(self, gamma_function, refer_point=None, rho=1, yita=1):  # rho=0.05, yita=1.05
+    def modulate_with_NN_with_refer_point(self, gamma_function, refer_point=None, rho=1, yita=1):  # rho=0.05, yita=1.05
         def compute_M(obs):
             action = np.zeros(self.obs_dim)
             gamma, normal = gamma_function(obs, action)

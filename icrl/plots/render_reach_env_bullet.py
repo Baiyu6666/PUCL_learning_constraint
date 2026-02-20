@@ -2,11 +2,8 @@ import pybullet as p
 import pybullet_data
 import numpy as np
 import os
-import math
-import random
 from icrl.constraint_net import ConstraintNet
 import time
-import matplotlib.pyplot as plt
 from icrl import utils
 
 
@@ -50,7 +47,6 @@ def main():
 
     def plot_demonstrations(path):
         # Plot demonstrations
-        from icrl import utils
         (obs_e, expert_acs, expert_reward), expert_lengths, expert_mean_reward = utils.load_expert_data(path, 20)
         trajectory_start_idx = 0
         for length in expert_lengths[:17]:
@@ -159,16 +155,16 @@ def main():
 
     set_camera()
     # Plotting for concave 
-    # setup_obstacles_concave()
-    # plot_demonstrations('icrl/expert_data/ReachConcaveObsDS')
+    setup_obstacles_concave()
+    plot_demonstrations('icrl/expert_data/ReachConcaveObsDS')
     # plot_constraint(f'icrl/wandb/run-20240716_093851-0lehfict/files/models/icrl_19_itrs/cn.pt')
     # plot_rollouts(f'icrl/wandb/run-20240716_093851-0lehfict')
 
 
     # Plotting for 2regions
-    setup_obstacles_2regions()
+    # setup_obstacles_2regions()
     # utils.load_expert_data_and_plot('icrl/expert_data/Reach2RegionObsDS', 222)
-    plot_demonstrations('icrl/expert_data/Reach2RegionObsDS')
+    # plot_demonstrations('icrl/expert_data/Reach2RegionObsDS')
     # plot_rollouts(f'icrl/wandb/run-20240718_041918-4svsme3b')
     # plot_constraint(f'icrl/wandb/run-20240718_041918-4svsme3b/files/models/icrl_6_itrs/cn.pt')
 

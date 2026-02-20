@@ -28,6 +28,9 @@ python run_me.py pucl -g test -lr 3e-4 -piv 10 -ft 3e4 -ni 40 -clr 0.003 -ec 0.0
 # GPUCL
 python run_me.py pucl -g test -tei PointEllip-v0 -eei PointEllipTest-v0 -ep icrl/expert_data/PointEllip -nis -lr 3e-4 -piv 10 -ft 3e4 -ni 40 -clr 0.003 -ec 0.01 -kp 1 -ki 0.1 -upid -lpd run-20240523_190205-8z00tfj3 -lpi 15 -lp -dnr -dnc -dno -spe -um -cl 32 32 -ee 3 -rdm GPU -GPUlt -6 -GPUng 7
 
+# DSCL
+python  run_me.py dscl -g test -cl 32 32 -ni 15 -clr 0.005 -dno -dnc -dnr -tei PointEllip-v0 -eei PointEllipTest-v0 -ep icrl/expert_data/PointEllip -een 30 -cosd 0 1 -bi 1000 -cpe 1 -ee 999 -er 4 -d cuda:0 -cbs 256 -twm -kNNt 0.2 -aret -sf
+
 # Note that to save training time, all four algorithms starts from a pre-trained unconstrained policy. 
 ```
 

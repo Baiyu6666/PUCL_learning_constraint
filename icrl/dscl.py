@@ -29,7 +29,7 @@ def dscl(config):
         A = np.diag([-2, -2, -2])
         linear_ds = lambda x: A @ (x[:3] - np.array([0.68, 0, 0.04]))
         nominal_agent = DS_Policy(3, linear_ds)
-    elif 'point' in config.train_env_id:
+    elif 'Point' in config.train_env_id:
         A = np.diag([-1, -1])
         linear_ds = lambda x: A @ (x[:2])
         nominal_agent = DS_Policy(2, linear_ds)
@@ -138,7 +138,7 @@ def dscl(config):
         nominal_obs, _, nominal_acs, nominal_rew, nominal_len = utils.sample_from_same_starting_points_as_demonstrations(
             nominal_agent, sampling_env, expert_obs, expert_lengths, config.rollouts_per_demonstration,
             deterministic=True, policy_excerpts=config.select_policy_excerpts, expert_reward=expert_reward,
-            cost_function=constraint_net.cost_function_non_binary)
+            cost_function=constraint_net.cost_function_non_binary, policy_excerpts_weight=config.policy_excerpts_weight)
 
         # update memory buffer
         if config.train_with_memory:
@@ -313,6 +313,7 @@ def main():
     parser.add_argument('--per_step_importance_sampling', '-psis', action='store_true')
     # parser.add_argument('--reset_policy', '-rp', action='store_true')   # it creates new policies from scratch.
     parser.add_argument('--train_with_memory', '-twm', action='store_true')
+    parser.add_argument('--policy_excerpts_weight', '-pew', type=float, default=1.)
     # ====================== constraint net ========================= #
     parser.add_argument('--cn_layers', '-cl', type=int, default=[4], nargs='*')
     parser.add_argument('--anneal_clr_by_factor', '-aclr', type=float, default=1.0)
