@@ -1,7 +1,23 @@
 import math
 import os
+import gym
 import numpy as np
-from gym.envs.mujoco import mujoco_env
+from gym import spaces
+from gym.utils import seeding
+
+try:
+    from gym.envs.mujoco import mujoco_env
+except Exception:
+    class _UnavailableMujocoEnv(gym.Env):
+        def __init__(self, *args, **kwargs):
+            raise ImportError(
+                "MuJoCo backend is unavailable. This env requires gym mujoco bindings."
+            )
+
+    class _MujocoModule:
+        MujocoEnv = _UnavailableMujocoEnv
+
+    mujoco_env = _MujocoModule()
 # tets rmote
 ABS_PATH = os.path.abspath(os.path.dirname(__file__))
 
@@ -672,102 +688,152 @@ class PointObstacle2Test(PointObstacle2):
         return next_obs, reward, done, infos
 
 
-# PointDS is nearly the same as PointEllip, with slight difference in the obstacle configuration and starting points,
-# we recommend not use it.
-class PointDS(mujoco_env.MujocoEnv):
+# PointDS is nearly the same as PointEllip, with slight difference in the obstacle
+# configuration and starting points.
+class _PointPlanarBase(gym.Env):
+    metadata = {"render.modes": ["human", "rgb_array"]}
+
+    def __init__(self, destination, action_clip_value, done_threshold):
+        self.destination = np.array(destination, dtype=np.float32)
+        self.action_clip_value = action_clip_value
+        self.done_threshold = done_threshold
+        self.starting_point = None
+        self.starting_point_candidates = None
+        self.starting_point_idx = 0
+
+        # Keep the same effective dynamics step as point_ds.xml.
+        self.dt = 0.02
+        self._init_qpos = np.zeros(3, dtype=np.float32)
+        self._init_qvel = np.zeros(3, dtype=np.float32)
+        self._qpos = self._init_qpos.copy()
+        self._qvel = self._init_qvel.copy()
+        self.last_obs = self._qpos.copy()
+
+        self.observation_space = spaces.Box(
+            low=np.array([-np.inf, -np.inf], dtype=np.float32),
+            high=np.array([np.inf, np.inf], dtype=np.float32),
+            dtype=np.float32,
+        )
+        self.action_space = spaces.Box(
+            low=np.array([-2.0, -2.0], dtype=np.float32),
+            high=np.array([2.0, 2.0], dtype=np.float32),
+            dtype=np.float32,
+        )
+        self.seed()
+
+    @property
+    def data(self):
+        class _Data:
+            def __init__(self, qpos, qvel):
+                self.qpos = qpos
+                self.qvel = qvel
+        return _Data(self._qpos, self._qvel)
+
+    def seed(self, seed=None):
+        self.np_random, seed = seeding.np_random(seed)
+        return [seed]
+
+    def set_state(self, qpos, qvel):
+        self._qpos = np.array(qpos, dtype=np.float32).copy()
+        self._qvel = np.array(qvel, dtype=np.float32).copy()
+
+    def _get_obs(self):
+        return self._qpos[:2].copy()
+
+    def _sample_starting_point(self):
+        raise NotImplementedError
+
+    def reset_model(self):
+        qvel = self._init_qvel.copy()
+        qpos = self._init_qpos.copy()
+        starting_point, noise_scale = self._sample_starting_point()
+        qpos[0] = self.np_random.uniform(low=-noise_scale, high=noise_scale) + starting_point[0]
+        qpos[1] = self.np_random.uniform(low=-noise_scale, high=noise_scale) + starting_point[1]
+        qpos[2] = 0.0
+        self.last_obs = qpos.copy()
+        self.set_state(qpos, qvel)
+        return self._get_obs()
+
+    def reset(self, **kwargs):
+        return self.reset_model()
+
+    def _apply_action(self, action):
+        qpos = self._qpos.copy()
+        qpos[2] = np.arctan2(action[1], action[0])
+        qpos[0] = qpos[0] + action[0] * self.dt
+        qpos[1] = qpos[1] + action[1] * self.dt
+        self.set_state(qpos, self._qvel.copy())
+        self.last_obs = qpos.copy()
+        return qpos
+
+    def _postprocess_action(self, action):
+        return action
+
+    def step(self, action):
+        action = np.asarray(action, dtype=np.float32)
+        action = np.clip(action, -self.action_clip_value, self.action_clip_value)
+        action = self._postprocess_action(action)
+        qpos = self._apply_action(action)
+        next_obs = self._get_obs()
+        reward_ctrl = float(np.sum(np.square(action)))
+
+        x, y = qpos[0], qpos[1]
+        dis2tar = float(np.sqrt((x - self.destination[0]) ** 2 + (y - self.destination[1]) ** 2))
+        reward = -dis2tar
+        done = dis2tar < self.done_threshold
+        if done:
+            reward += self._success_bonus()
+
+        infos = {
+            "circle_reward": reward,
+            "control_reward": reward_ctrl,
+            "action_1": float(action[0]),
+            "action_2": float(action[1]),
+        }
+        return next_obs, reward, done, infos
+
+    def _success_bonus(self):
+        return 0.0
+
+    def set_starting_point(self, starting_point):
+        if starting_point is not None and starting_point.ndim == 1:
+            starting_point = starting_point.reshape(1, -1)
+        self.starting_point_candidates = starting_point
+
+    def viewer_setup(self):
+        return
+
+    def render(self, mode="human"):
+        if mode == "rgb_array":
+            return np.zeros((240, 320, 3), dtype=np.uint8)
+        return None
+
+
+class PointDS(_PointPlanarBase):
     def __init__(
             self,
             xml_file=ABS_PATH+'/xmls/point_ds.xml',
             destination=[0, 0],
             action_clip_value=np.inf,
-            obstacle_geom=[-2, 5, -2, 2],  #obstacle is a rectangle at  x1, x2, y1, y2
+            obstacle_geom=[-2, 5, -2, 2],  # obstacle is a rectangle at x1, x2, y1, y2
             *args,
             **kwargs
         ):
-
-        self.destination = destination
+        del xml_file, args, kwargs
         self.obstacle_geom = obstacle_geom
-        self.action_clip_value = action_clip_value
-        self.starting_point = None
-        self.starting_point_idx = 0
-        self.starting_point_candidates = None
-        super(PointDS, self).__init__(xml_file, 1)
+        super(PointDS, self).__init__(destination, action_clip_value, done_threshold=0.02)
 
-    def _get_obs(self):
-        return np.concatenate([
-            self.data.qpos.flatten()[:2],
-        ])
-
-    def reset_model(self,):
-        qvel = self.init_qvel
-        qpos = self.init_qpos.copy()
-
-        # If no starting point specified, randomly start
+    def _sample_starting_point(self):
         if self.starting_point_candidates is not None:
             starting_point = self.starting_point_candidates[
-                self.starting_point_idx % self.starting_point_candidates.shape[0]]
-            noise_scale = 0
+                self.starting_point_idx % self.starting_point_candidates.shape[0]
+            ]
+            noise_scale = 0.0
             self.starting_point_idx += 1
-            # print('using starting point %s' %(starting_point))
         else:
-            starting_point = np.array([1.2, 1.2])
+            starting_point = np.array([1.2, 1.2], dtype=np.float32)
             noise_scale = 0.7
-
-        qpos[0] = self.np_random.uniform(low=-noise_scale, high=noise_scale, size=1) + starting_point[0]
-        qpos[1] = self.np_random.uniform(low=-noise_scale, high=noise_scale, size=1) + starting_point[1]
-        qpos[2] = 0
-
-        self.last_obs = qpos
-
-        self.set_state(qpos, qvel)
-        observation = self._get_obs()
-        return observation
-
-    def reset(self, **kwargs):
-        self.sim.reset()
-        ob = self.reset_model(**kwargs)
-        return ob
-
-    def step(self, action):
-        action = np.clip(action, -self.action_clip_value, self.action_clip_value)
-        qpos = np.copy(self.data.qpos)
-        qpos[2] = np.arctan2(action[1], action[0])
-        qpos[0] = qpos[0] + action[0] * self.dt
-        qpos[1] = qpos[1] + action[1] * self.dt
-
-        self.set_state(qpos, np.copy(self.data.qvel))
-        next_obs = self._get_obs()
-        reward_ctrl = np.sum(np.square(action))
-
-        x, y = qpos[0], qpos[1]
-        dis2tar = np.sqrt((x-self.destination[0])**2 + (y-self.destination[1])**2)
-        reward = (- dis2tar)
-        done = True if dis2tar < 0.02 else False # TODO:tolerance needs testing
-
-        # last_dis2tar = np.sqrt((self.last_obs[0]-self.destination[0])**2 + (self.last_obs[1]-self.destination[1])**2)
-        # dis2tar = np.sqrt((x-self.destination[0])**2 + (y-self.destination[1])**2)
-        # reward = last_dis2tar - dis2tar
-        # done = True if dis2tar < 0.02 else False # TODO:tolerance needs testing
-
-        infos = {'circle_reward': reward,
-                 'control_reward': reward_ctrl,
-                 'action_1': action[0],
-                 'action_2': action[1]}
-
-        return next_obs, reward, done, infos
-
-    def set_starting_point(self, starting_point):
-        if starting_point is not None:
-            if starting_point.ndim == 1:
-                starting_point = starting_point.reshape(1, -1)
-        self.starting_point_candidates = starting_point
-
-    def viewer_setup(self):
-        for key, value in DEFAULT_CAMERA_CONFIG.items():
-            if isinstance(value, np.ndarray):
-                getattr(self.viewer.cam, key)[:] = value
-            else:
-                setattr(self.viewer.cam, key, value)
+        return starting_point, noise_scale
 
 class PointDSTest(PointDS):
     def __init__(
@@ -825,7 +891,7 @@ class PointDSTest(PointDS):
     def get_gmm(self):
         return self.gmm_true
 
-class PointEllip(mujoco_env.MujocoEnv):
+class PointEllip(_PointPlanarBase):
     def __init__(
             self,
             xml_file=ABS_PATH+'/xmls/point_ds.xml',
@@ -834,94 +900,29 @@ class PointEllip(mujoco_env.MujocoEnv):
             *args,
             **kwargs
         ):
+        del xml_file, args, kwargs
+        super(PointEllip, self).__init__(destination, action_clip_value, done_threshold=0.03)
 
-        self.destination = destination
-        self.action_clip_value = action_clip_value
-        self.starting_point = None
-        self.starting_point_candidates = None
-        self.starting_point_idx = 0
-        self.last_obs = np.zeros((3))
-        super(PointEllip, self).__init__(xml_file, 1)
-
-    def _get_obs(self):
-        return np.concatenate([
-            self.data.qpos.flatten()[:2],
-        ])
-
-    def reset_model(self,):
-        qvel = self.init_qvel
-        qpos = self.init_qpos.copy()
-        # If no starting point specified, randomly start
-
+    def _sample_starting_point(self):
         if self.starting_point_candidates is not None:
-            starting_point = self.starting_point_candidates[self.starting_point_idx % self.starting_point_candidates.shape[0]]
-            noise_scale = 0
+            starting_point = self.starting_point_candidates[
+                self.starting_point_idx % self.starting_point_candidates.shape[0]
+            ]
+            noise_scale = 0.0
             self.starting_point_idx += 1
-            # print('using starting point %s' %(starting_point))
         else:
-            starting_point = np.array([0.9, 1.])
+            starting_point = np.array([0.9, 1.0], dtype=np.float32)
             noise_scale = 0.5
+        return starting_point, noise_scale
 
-        qpos[0] = self.np_random.uniform(low=-noise_scale, high=noise_scale) + starting_point[0]
-        qpos[1] = self.np_random.uniform(low=-noise_scale, high=noise_scale) + starting_point[1]
-        qpos[2] = 0
-        self.last_obs = qpos
-
-        self.set_state(qpos, qvel)
-        observation = self._get_obs()
-        return observation
-
-    def reset(self, **kwargs):
-        self.sim.reset()
-        ob = self.reset_model(**kwargs)
-        return ob
-
-    def step(self, action):
-        action = np.clip(action, -self.action_clip_value, self.action_clip_value)
-        qpos = np.copy(self.data.qpos)
+    def _postprocess_action(self, action):
         speeds = np.linalg.norm(action)
         if speeds > 2:
-            action = action / speeds * 2
-        qpos[2] = np.arctan2(action[1], action[0])
-        qpos[0] = qpos[0] + action[0] * self.dt
-        qpos[1] = qpos[1] + action[1] * self.dt
+            action = action / speeds * 2.0
+        return action
 
-        self.set_state(qpos, np.copy(self.data.qvel))
-        next_obs = self._get_obs()
-        reward_ctrl = np.sum(np.square(action))
-
-        x, y = qpos[0], qpos[1]
-        dis2tar = np.sqrt((x-self.destination[0])**2 + (y-self.destination[1])**2)
-        reward = (- dis2tar)# - 0.02 * (action[0] +action[1])**2
-        done = True if dis2tar < 0.03 else False# TODO:tolerance needs testing
-        if done:
-            reward = reward + 100
-
-        # last_dis2tar = np.sqrt((self.last_obs[0]-self.destination[0])**2 + (self.last_obs[1]-self.destination[1])**2)
-        # dis2tar = np.sqrt((x-self.destination[0])**2 + (y-self.destination[1])**2)
-        # reward = last_dis2tar - dis2tar
-        # done = True if dis2tar < 0.02 else False # TODO:tolerance needs testing
-
-        self.last_obs = qpos
-
-        infos = {'circle_reward': reward,
-                 'control_reward': reward_ctrl,
-                 'action_1': action[0],
-                 'action_2': action[1]}
-
-        return next_obs, reward, done, infos
-    def set_starting_point(self, starting_point):
-        if starting_point is not None:
-            if starting_point.ndim == 1:
-                starting_point = starting_point.reshape(1, -1)
-        self.starting_point_candidates = starting_point
-
-    def viewer_setup(self):
-        for key, value in DEFAULT_CAMERA_CONFIG.items():
-            if isinstance(value, np.ndarray):
-                getattr(self.viewer.cam, key)[:] = value
-            else:
-                setattr(self.viewer.cam, key, value)
+    def _success_bonus(self):
+        return 100.0
 
 class PointEllipTest(PointEllip):
     def __init__(
@@ -983,4 +984,3 @@ class PointEllipTest(PointEllip):
 if __name__=='__main__':
     a = PointDSTest()
     print(a.reset(starting_point=[1,1], noise_scale=1))
-
