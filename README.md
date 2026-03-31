@@ -85,6 +85,7 @@ python run_me.py pucl -g HC_gpu -tei HCWithPos-v0 -eei HCWithPosTest-v0 -ep icrl
 # Learn constraint 
 python run_me.py dscl -g test -cl 16 16 -ni 18 -clr 0.005 -dno -dnc -dnr -tei ReachConcaveObs-v0 -eei ReachConcaveObs-v0 -ep icrl/expert_data/ReachConcaveObsDS -cosd 0 1 2 -bi 400 -cpe 1 -er 44 -d cuda:0 -cbs 256 -twm -kNNt 0.029 -dmwr -spe -aret -dmr 2
 
+python run_me.py dscl   -g test   -ctm mil   -tei ReachConcaveObs-v0   -eei ReachConcaveObs-v0   -ep ../icrl-master/icrl/expert_data/ReachConcaveObsDS   -fdp ../icrl-master/icrl/expert_data/ReachConcaveObsDS   -er 19   -fr 15   -cl 32 32   -clr 0.001   -bi 2000   -cpe 1   -cbs 256   -cmp lse   -cmtn 0.05   -crc 0.053   -cosd 0 1 2   -dno -dnc -dnr   -d cuda:0   -s 65 -sf -spe -twm -pew 1.05
 # Transfer learned constraint network and generate policy rollouts
 # Please check ds_policy.py and plots/render_reach_env_bullet.py
 

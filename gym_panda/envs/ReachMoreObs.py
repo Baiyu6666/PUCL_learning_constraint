@@ -86,19 +86,14 @@ class ReachConcaveObs(gym.Env):
         ########################
         # Reward function:
         ########################
-        # Dense reward - displacement
-        delta_distance = np.linalg.norm(state_robot - state_object) - np.linalg.norm(last_state_robot - state_object)
-        dis_reward = delta_distance * - 2
-        # Dense reward - distance to target
-        # distance = np.linalg.norm(state_robot - ending_point)
-        # dis_reward = distance * -1
+        # Dense reward - path length. Shorter trajectories get higher return.
+        dis_reward = -np.linalg.norm(state_robot - last_state_robot)
 
         # Dense reward - time
         # ctl_reward = - 0.0001 # 0.0002
 
-        # Dense reward - control penalty (minimum distance)
-        ctl_reward = - 0.008 * np.linalg.norm(action)
-        # ctl_reward = - 0.5 * np.linalg.norm(state_robot - last_state_robot)
+        # No control penalty: only path length matters.
+        ctl_reward = 0.0
 
         reward = dis_reward + ctl_reward + done_reward
         info.update({'ctl_reward': ctl_reward, 'dis_reward':dis_reward, 'action_norm': np.linalg.norm(action, ord=np.inf)})

@@ -17,6 +17,7 @@ from icrl.ds_policy import DS_Policy
 
 def dscl(config):
     # Initialize DS agent and specify the target point
+    nominal_agent = None
     if 'ReachConcave' in config.train_env_id:
         A = np.diag([-2, -2, -2])
         linear_ds = lambda x: A @ (x[:3] - np.array([0.68, 0, 0.04]))
@@ -90,7 +91,8 @@ def dscl(config):
                                    target_kl_new_old=config.cn_target_kl_new_old,
                                    train_gail_lambda=config.train_gail_lambda, eps=config.cn_eps, device=config.device,
                                    loss_type=config.cn_loss_type, manual_threshold=config.cn_manual_threshold,
-                                   weight_expert_loss=1, weight_nominal_loss=1)
+                                   weight_expert_loss=1, weight_nominal_loss=1,
+                                   initial_feasible_bias=config.cn_initial_feasible_bias)
     # wandb.watch(constraint_net.network, log='all', log_freq=3000)
 
     if config.loading_constraint:
@@ -108,9 +110,10 @@ def dscl(config):
     cn_plot_dir = os.path.join(config.save_dir, 'constraint_net')
     utils.del_and_make(cn_plot_dir)
 
-    # training
     timesteps = 0
     start_time = time.time()
+
+    # training
     print(utils.colorize('\ntraining', color='green', bold=True), flush=True)
     best_true_reward, best_true_cost, best_recall, best_jaccard = -np.inf, np.inf, -np.inf, -np.inf
 
@@ -161,6 +164,26 @@ def dscl(config):
                 backward_metrics = constraint_net.train_MECL_BC(config.backward_iters, feasible_obs, feasible_acs,
                                                                 infeasible_obs, infeasible_acs, None,
                                                                 config.WB_label_frequency)
+
+            elif config.cn_training_mode == 'mil':
+                if nominal_len_memory.size == 0:
+                    rn_nominal_obs = nominal_obs_memory
+                    backward_metrics = {
+                        'backward/cn_loss': np.nan,
+                        'backward/mil_skipped_no_nominal_traj': 1,
+                    }
+                else:
+                    _, rn_nominal_obs, backward_metrics = constraint_net.train_with_MIL(
+                        config.backward_iters,
+                        expert_obs,
+                        expert_acs,
+                        expert_lengths,
+                        nominal_obs_memory,
+                        nominal_acs_memory,
+                        nominal_len_memory,
+                        config,
+                    )
+                print('MIL backward step constraint loss:', backward_metrics.get('backward/cn_loss'))
 
             else:
                 _, rn_nominal_obs, backward_metrics = constraint_net.train_with_two_step_pu_learning(
@@ -329,6 +352,10 @@ def main():
     parser.add_argument('--cn_target_kl_new_old', '-ctkno', type=float, default=100)
     parser.add_argument('--cn_eps', '-ce', type=float, default=1e-5)
     parser.add_argument('--cn_loss_type', '-clt', type=str, default='bce')  # options: ml, bce, sbce
+    parser.add_argument('--cn_training_mode', '-ctm', type=str, default='pucl')  # options: pucl, mil
+    parser.add_argument('--cn_mil_Tn', '-cmtn', type=float, default=0.2)
+    parser.add_argument('--cn_mil_pooling', '-cmp', type=str, default='lse')  # options: lse, mean, min, noiseor
+    parser.add_argument('--cn_initial_feasible_bias', '-cifb', type=float, default=None)
     parser.add_argument('--cn_manual_threshold', '-cmt', type=float, default=0.5)
     # ====================== PU learning ========================= #
     parser.add_argument('--refine_iterations', '-ri', type=int, default=1)
@@ -346,7 +373,6 @@ def main():
     # ======================== expert data ========================== #
     parser.add_argument('--expert_path', '-ep', type=str, default='icrl/expert_data/PointCircle')
     parser.add_argument('--expert_rollouts', '-er', type=int, default=20)   # max
-    parser.add_argument('--failed_rollouts', '-fr', type=int, default=10)
     # ========================== various =========================== #
     parser.add_argument('--action_clip_value', '-acv', type=float, default=0.25)
     parser.add_argument('--position_limit', '-posl', type=float, default=13.0)
@@ -379,6 +405,12 @@ def main():
         config['backward_iters'] = 2
         config['warmup_timesteps'] = 0
         config['n_iters'] = 5
+
+    if config['cn_training_mode'] not in ('pucl', 'mil'):
+        raise ValueError("cn_training_mode must be either 'pucl' or 'mil'.")
+
+    if config['cn_training_mode'] == 'mil' and config['cn_initial_feasible_bias'] is None:
+        config['cn_initial_feasible_bias'] = 1
 
     # generating the name by concatenating arguments with non-default values
     # default values are either the one specified in config file or in parser (if both

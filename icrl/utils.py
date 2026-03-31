@@ -614,15 +614,18 @@ def load_expert_data(expert_path, num_rollouts, load_type='EXPERT'):
     # selected_indices = np.array([1,2,4,6,7,12,13,14,18,21,24,25,26,27])
     # selected_indices = np.array([1,2, 3])
 
-    # Use randomly selected num_rollouts data
-    set_random_seed(int(time.time()))
-    selected_indices = np.random.choice(len(pkl_files), num_rollouts, replace=False)
+    # Use the first num_rollouts data in a fixed order for reproducibility.
+    selected_indices = np.arange(num_rollouts)
 
     selected_files = [pkl_files[idx] for idx in selected_indices]
     expert_length = []
+    recompute_reach_concave_rewards = 'ReachConcaveObsDS' in os.path.normpath(expert_path)
     for idx, file_name in enumerate(selected_files):
         with open(os.path.join(rollouts_dir, file_name), 'rb') as f:
             data = pickle.load(f)
+        if recompute_reach_concave_rewards:
+            data = dict(data)
+            data['rewards'] = recompute_reach_concave_rollout_reward(data['observations'], data['actions'])
         if idx == 0:
             expert_obs = data['observations']
             expert_acs = data['actions']
@@ -635,6 +638,31 @@ def load_expert_data(expert_path, num_rollouts, load_type='EXPERT'):
     expert_mean_reward = np.mean(expert_rew)
     expert_length = np.array(expert_length)
     return (expert_obs, expert_acs, expert_rew), expert_length, expert_mean_reward
+
+
+def recompute_reach_concave_rollout_reward(observations, actions):
+    observations = np.asarray(observations)
+    actions = np.asarray(actions)
+    if actions.size == 0:
+        return np.array([0.0], dtype=np.float32)
+
+    total_reward = 0.0
+    for step_idx in range(actions.shape[0]):
+        current_state = observations[min(step_idx, observations.shape[0] - 1), :3]
+        if step_idx + 1 < observations.shape[0]:
+            next_state = observations[step_idx + 1, :3]
+        else:
+            delta = actions[step_idx] * 0.008
+            next_state = np.array([
+                np.clip(current_state[0] + delta[0], 0.0, 1.0),
+                np.clip(current_state[1] + delta[1], -0.18, 0.18),
+                np.clip(current_state[2] + delta[2], 0.0, 0.5),
+            ])
+
+        dis_reward = -float(np.linalg.norm(next_state - current_state))
+        total_reward += dis_reward
+
+    return np.array([total_reward], dtype=np.float32)
 
 def load_expert_data_and_plot(expert_path, num_rollouts, load_type='EXPERT'):
     import matplotlib

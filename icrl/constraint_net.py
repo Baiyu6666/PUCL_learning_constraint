@@ -49,7 +49,8 @@ class ConstraintNet(nn.Module):
             sbce_coe: float = 0.3,
             manual_threshold: float = 0.7,
             weight_expert_loss: float = 1.0,
-            weight_nominal_loss: float = 1.0
+            weight_nominal_loss: float = 1.0,
+            initial_feasible_bias: Optional[float] = None,
         ):
         super(ConstraintNet, self).__init__()
 
@@ -87,6 +88,7 @@ class ConstraintNet(nn.Module):
         self.manual_threshold = manual_threshold
         self.weight_expert_loss = weight_expert_loss
         self.weight_nominal_loss = weight_nominal_loss
+        self.initial_feasible_bias = initial_feasible_bias
         # self.weight_decay = 100e-4
         self._build()
 
@@ -109,6 +111,13 @@ class ConstraintNet(nn.Module):
         # creating the network and adding sigmoid at the end
         self.network = nn.Sequential(*create_mlp(self.input_dims, 1, self.hidden_sizes, nn.LeakyReLU), nn.Sigmoid())
         self.network.to(self.device)
+        if self.initial_feasible_bias is not None:
+            last_linear = None
+            for module in self.network.modules():
+                if isinstance(module, nn.Linear):
+                    last_linear = module
+            if last_linear is not None:
+                nn.init.constant_(last_linear.bias, self.initial_feasible_bias)
         # building the optimizer
         if self.optimizer_class is not None:
             self.optimizer = self.optimizer_class(self.parameters(), lr=self.lr_schedule(1), **self.optimizer_kwargs)
@@ -396,6 +405,98 @@ class ConstraintNet(nn.Module):
                           'backward/expert_preds_mean': th.mean(expert_preds).item(),
                           }
         return bw_metrics
+
+    def train_with_MIL(
+            self,
+            iterations: np.ndarray,
+            expert_obs: np.ndarray,
+            expert_acs: np.ndarray,
+            expert_len: np.ndarray,
+            nominal_obs: np.ndarray,
+            nominal_acs: np.ndarray,
+            nominal_len: np.ndarray,
+            mil_config: object,
+    ) -> Dict[str, Any]:
+        expert_data = self.prepare_data(expert_obs, expert_acs)
+        nominal_data = self.prepare_data(nominal_obs, nominal_acs)
+        device = expert_data.device
+
+        nominal_traj_labels = torch.zeros(len(nominal_len), 1, device=device)
+        expert_traj_labels = torch.ones(len(expert_len), 1, device=device)
+        combined_traj_labels = torch.cat((nominal_traj_labels, expert_traj_labels), dim=0)
+        combined_data = torch.cat((nominal_data, expert_data), dim=0)
+        self.network.train()
+
+        def pool_traj_preds(preds_traj: torch.Tensor, temperature: float) -> torch.Tensor:
+            preds_traj = preds_traj.clamp(self.eps, 1 - self.eps)
+            if mil_config.cn_mil_pooling == 'lse':
+                scaled_infeasibility = (1 - preds_traj) / temperature
+                log_mean_exp = torch.logsumexp(scaled_infeasibility, dim=0) - torch.log(
+                    torch.tensor(preds_traj.shape[0], device=preds_traj.device, dtype=preds_traj.dtype)
+                )
+                return 1 - temperature * log_mean_exp
+            if mil_config.cn_mil_pooling == 'mean':
+                return preds_traj.mean()
+            if mil_config.cn_mil_pooling == 'min':
+                return preds_traj.min()
+            if mil_config.cn_mil_pooling == 'noiseor':
+                return preds_traj.prod()
+            raise NotImplementedError(
+                'Pooling method ' + str(mil_config.cn_mil_pooling) + ' not recognized'
+            )
+
+        loss = torch.tensor(float('inf'), device=device)
+        nominal_preds = torch.empty(0, device=device)
+        expert_preds = torch.empty(0, device=device)
+
+        for itr in tqdm(range(iterations)):
+            preds = self.__call__(combined_data).squeeze(-1)
+
+            combined_traj_preds = []
+            start_idx = 0
+            temperature = mil_config.cn_mil_Tn
+
+            for length in nominal_len:
+                end_idx = start_idx + int(length)
+                preds_traj = preds[start_idx:end_idx]
+                combined_traj_preds.append(pool_traj_preds(preds_traj, temperature))
+                start_idx = end_idx
+
+            nominal_end_idx = start_idx
+            for length in expert_len:
+                end_idx = start_idx + int(length)
+                preds_traj = preds[start_idx:end_idx]
+                combined_traj_preds.append(pool_traj_preds(preds_traj, temperature))
+                start_idx = end_idx
+
+            combined_traj_preds = torch.stack(combined_traj_preds).unsqueeze(1)
+            combined_traj_preds = combined_traj_preds.clamp(self.eps, 1 - self.eps)
+            loss = nn.BCELoss()(combined_traj_preds, combined_traj_labels)
+            if ((itr + 1) % 100 == 0) or (itr == iterations - 1):
+                print(f'MIL backward iteration {itr + 1}/{iterations}, loss: {loss.item():.6f}')
+
+            self.optimizer.zero_grad()
+            loss.backward()
+            self.optimizer.step()
+
+            nominal_preds = preds[:nominal_end_idx]
+            expert_preds = preds[nominal_end_idx:]
+
+        self.network.eval()
+
+        if nominal_obs.size == 0:
+            return None, nominal_obs, {'backward/cn_loss': loss.item()}
+
+        bw_metrics = {
+            'backward/cn_loss': loss.item(),
+            'backward/nominal_preds_max': th.max(nominal_preds).item(),
+            'backward/nominal_preds_min': th.min(nominal_preds).item(),
+            'backward/nominal_preds_mean': th.mean(nominal_preds).item(),
+            'backward/expert_preds_max': th.max(expert_preds).item(),
+            'backward/expert_preds_min': th.min(expert_preds).item(),
+            'backward/expert_preds_mean': th.mean(expert_preds).item(),
+        }
+        return None, nominal_obs, bw_metrics
 
     def train_with_two_step_pu_learning(
             self,
@@ -748,7 +849,8 @@ class ConstraintNet(nn.Module):
                 action_low=self.action_low,
                 action_high=self.action_high,
                 device=self.device,
-                hidden_sizes=self.hidden_sizes
+                hidden_sizes=self.hidden_sizes,
+                initial_feasible_bias=self.initial_feasible_bias,
         )
         th.save(state_dict, save_path)
 
@@ -799,6 +901,7 @@ class ConstraintNet(nn.Module):
             action_low = state_dict['action_low']
         if action_high is None:
             action_high = state_dict['action_high']
+        initial_feasible_bias = state_dict.get('initial_feasible_bias')
         if device is None:
             device = state_dict['device']
         # creating the network
@@ -807,7 +910,7 @@ class ConstraintNet(nn.Module):
                 obs_dim, acs_dim, hidden_sizes, None, None, optimizer_class=None,
                 is_discrete=is_discrete, obs_select_dim=obs_select_dim, acs_select_dim=acs_select_dim,
                 clip_obs=clip_obs, initial_obs_mean=obs_mean, initial_obs_var=obs_var, action_low=action_low, action_high=action_high,
-                device=device
+                device=device, initial_feasible_bias=initial_feasible_bias
         )
         constraint_net.network.load_state_dict(state_dict['cn_network'])
         return constraint_net
@@ -1937,5 +2040,3 @@ def synthesis_query(pos_data, neg_data, n_synthesis_data, n_query_data, cost_fun
     # plt.title('Kernel Density Estimation and Scatter Plot')
     # plt.show()
     return query_data
-
-
