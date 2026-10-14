@@ -1,6 +1,11 @@
 /results/
 /old/
 
+# Local WandB runs
+/wandb/
+/icrl/wandb/run-*/
+/icrl/wandb/latest-run
+
 ### Python ###
 # Byte-compiled / optimized / DLL files
 __pycache__/
