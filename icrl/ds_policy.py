@@ -13,12 +13,13 @@ import matplotlib
 matplotlib.use('TKAgg')
 
 class DS_Policy():
-    def __init__(self, obs_dim, nominal_ds, gmm_confidence=5):
+    def __init__(self, obs_dim, nominal_ds, gmm_confidence=5, stable_modulation_basis=False):
         # nominal_ds is a numpy function x:n-d np array and u:m-d numpy array into n=d np array
         self.nominal_ds = nominal_ds
         self.modulated_ds = nominal_ds
         self.obs_dim = obs_dim
         self.gmm_confidence = gmm_confidence
+        self.stable_modulation_basis = stable_modulation_basis
 
     def __call__(self, *args):
         return self.predict(*args)
@@ -107,8 +108,19 @@ class DS_Policy():
                 E = np.stack([normal, tangent], -1)
                 D = np.diag([1 - 1 / gamma, 1 + 1 / gamma])
             elif cn_obs_dim == 3:
-                tangent1 = np.array([normal[1], -normal[0], 0])
-                tangent2 = np.array([0, normal[2], -normal[1]])
+                if self.stable_modulation_basis:
+                    norm = np.linalg.norm(normal)
+                    if norm < 1e-8:
+                        return np.eye(3), np.eye(3), np.eye(3), gamma
+                    normal = normal / norm
+                    # Works even when the cylinder normal has exactly zero y/z.
+                    axis = np.eye(3)[np.argmin(np.abs(normal))]
+                    tangent1 = np.cross(normal, axis)
+                    tangent1 /= np.linalg.norm(tangent1)
+                    tangent2 = np.cross(normal, tangent1)
+                else:
+                    tangent1 = np.array([normal[1], -normal[0], 0])
+                    tangent2 = np.array([0, normal[2], -normal[1]])
                 E = np.stack([normal, tangent1, tangent2], -1)
                 D = np.diag([1 - 1 / gamma, 1 + 1 / gamma, 1 + 1 / gamma])
             else:
@@ -123,6 +135,13 @@ class DS_Policy():
         self.modulated_ds = lambda x: compute_M(x)[0] @ self.nominal_ds(x)
 
     def modulate_with_NN_with_refer_point(self, gamma_function, refer_point=None, rho=1, yita=1):  # rho=0.05, yita=1.05
+        if not np.isfinite(rho) or rho <= 0:
+            raise ValueError('rho must be finite and positive')
+        explicit_reference = refer_point is not None and np.ndim(refer_point) > 0
+        if explicit_reference:
+            refer_point = np.asarray(refer_point, dtype=float)
+            if refer_point.shape not in ((2,), (3,)) or not np.isfinite(refer_point).all():
+                raise ValueError('reference point must contain finite XY or XYZ coordinates')
         def compute_M(obs):
             action = np.zeros(self.obs_dim)
             gamma, normal = gamma_function(obs, action)
@@ -137,9 +156,29 @@ class DS_Policy():
                 E = np.stack([refer, tangent], -1)
                 D = np.diag([1 - 1 / gamma, 1 + 1 / gamma])
             elif cn_obs_dim == 3:
-                refer = np.array([0.55, 0, obs[2]]) - obs[:3] # for panda concave refer point is fixed
-                tangent1 = np.array([normal[1], -normal[0], 0])
-                tangent2 = np.array([0, normal[2], -normal[1]])
+                if explicit_reference:
+                    point = refer_point if len(refer_point) == 3 else np.r_[refer_point, obs[2]]
+                    refer = point - obs[:3]
+                else:
+                    # Preserve the existing ReachConcave reference convention.
+                    refer = np.array([0.55, 0, obs[2]]) - obs[:3]
+                if self.stable_modulation_basis:
+                    norm = np.linalg.norm(normal)
+                    if norm < 1e-8:
+                        return np.eye(3), np.eye(3), np.eye(3), gamma
+                    normal = normal / norm
+                    ref_norm = np.linalg.norm(refer)
+                    # A reference at the state or in its tangent plane makes
+                    # the reference basis singular: use ordinary modulation.
+                    if ref_norm < 1e-8 or abs(np.dot(refer / ref_norm, normal)) < 1e-6:
+                        refer = normal.copy()
+                    axis = np.eye(3)[np.argmin(np.abs(normal))]
+                    tangent1 = np.cross(normal, axis)
+                    tangent1 /= np.linalg.norm(tangent1)
+                    tangent2 = np.cross(normal, tangent1)
+                else:
+                    tangent1 = np.array([normal[1], -normal[0], 0])
+                    tangent2 = np.array([0, normal[2], -normal[1]])
                 E = np.stack([refer, tangent1, tangent2], -1)
                 D = np.diag([1 - 1 / gamma, 1 + 1 / gamma, 1 + 1 / gamma])
             else:

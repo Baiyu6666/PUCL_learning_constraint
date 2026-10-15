@@ -6,6 +6,8 @@ import pickle
 import shutil
 import subprocess
 import types
+import tempfile
+from datetime import datetime
 import gym, time
 import numpy as np
 from numpy.ma.extras import average
@@ -22,6 +24,32 @@ from stable_baselines3.common.vec_env import (VecCostWrapper,
 from stable_baselines3.common.vec_env.base_vec_env import VecEnv
 from tqdm import tqdm
 import matplotlib.pyplot as plt
+
+
+def create_local_run(config):
+    """Create a fresh local run without deleting previous results."""
+    root = os.path.abspath('icrl/runs')
+    os.makedirs(root, exist_ok=True)
+    prefix = '{}-{}-'.format(config['train_env_id'], datetime.now().strftime('%Y%m%d_%H%M%S'))
+    run_dir = tempfile.mkdtemp(prefix=prefix, dir=root)
+    config['save_dir'] = os.path.join(run_dir, 'files')
+    os.makedirs(config['save_dir'])
+    save_dict_as_json(config, config['save_dir'], 'config')
+    print('Local training results:', config['save_dir'], flush=True)
+    return Dict2Class(config)
+
+
+def append_local_metrics(save_dir, metrics):
+    def encode(value):
+        if isinstance(value, np.ndarray):
+            return value.tolist()
+        if isinstance(value, np.generic):
+            return value.item()
+        if isinstance(value, th.Tensor):
+            return value.detach().cpu().tolist()
+        raise TypeError('Unsupported metric type: {}'.format(type(value)))
+    with open(os.path.join(save_dir, 'metrics.jsonl'), 'a') as stream:
+        stream.write(json.dumps(metrics, default=encode) + '\n')
 
 #==============================================================================
 # Functions to handle parser.
@@ -261,7 +289,7 @@ def make_env(env_id, rank, log_dir, seed=0):
         env.seed(seed + rank)
         if 'ReachVel' in env_id:
             env = Monitor(env, log_dir, info_keywords=('is_success',), track_keywords=('cost', 'dis_reward', 'ctl_reward', 'action_norm_inf'))
-        elif 'Reach' in env_id:
+        elif 'Reach' in env_id or env_id == 'KukaCup1-v0':
             env = Monitor(env, log_dir, info_keywords=('is_success',),
                           track_keywords=('cost', 'dis_reward', 'ctl_reward'))
         else:
@@ -544,12 +572,18 @@ def sample_from_same_starting_points_as_demonstrations(agent, env, expert_obs, e
 
 def sample_true_labeled_data(cost_function, env_id):
     # This function is only for ReachConcave env or Reach2regions env, it generates true labeled data from true env.
-    if 'Reach' not in env_id:
+    if 'Reach' not in env_id and env_id != 'KukaCup1-v0':
         raise NotImplementedError('Warning! This function is only for Reach env')
     obs_dim = 9
     acs_dim = 3
     # for concave env
-    if 'ReachConcave' in env_id:
+    if env_id == 'KukaCup1-v0':
+        env = gym.make(env_id)
+        try:
+            x_lim, y_lim, z_lim = zip(env.workspace_low, env.workspace_high)
+        finally:
+            env.close()
+    elif 'ReachConcave' in env_id:
         x_lim = (0.42, 0.7)
         y_lim = (-0.1, 0.18)
         z_lim = (0.02, 0.4)
@@ -599,7 +633,12 @@ def compute_kl(agent_2, observations, actions, agent_1=None):
 # =============================================================================
 # Various
 # =============================================================================
-def load_expert_data(expert_path, num_rollouts, load_type='EXPERT'):
+def load_expert_data(expert_path, num_rollouts, load_type='EXPERT', selection_seed=None):
+    """Select demos with a private RNG, without changing training RNG states.
+
+    Training callers pass their configured seed. Omitted/None uses seed 0
+    for deterministic standalone analysis and legacy callers.
+    """
     rollouts_dir = os.path.join(expert_path, 'files/' + load_type + '/rollouts')
     all_files = os.listdir(rollouts_dir)
 
@@ -615,8 +654,8 @@ def load_expert_data(expert_path, num_rollouts, load_type='EXPERT'):
     # selected_indices = np.array([1,2, 3])
 
     # Use randomly selected num_rollouts data
-    set_random_seed(int(time.time()))
-    selected_indices = np.random.choice(len(pkl_files), num_rollouts, replace=False)
+    selection_rng = np.random.RandomState(0 if selection_seed is None else selection_seed)
+    selected_indices = selection_rng.choice(len(pkl_files), num_rollouts, replace=False)
 
     selected_files = [pkl_files[idx] for idx in selected_indices]
     expert_length = []
@@ -920,14 +959,20 @@ def get_net_arch(config):
         return [separate_layers]
 
 def get_sid():
+    # Never launch an interactive shell here: its job control can take over
+    # the terminal foreground process group and break Ctrl+C for training.
+    command = shutil.which('who_am_i')
+    if command is None:
+        return '-1'
     try:
-        sid = subprocess.check_output(['/bin/bash', '-i', '-c', "who_am_i"], timeout=2).decode("utf-8").split('\n')[-2]
+        sid = subprocess.check_output([command], timeout=2,
+                                      stderr=subprocess.DEVNULL).decode('utf-8').strip()
         sid = sid.lower()
         if "system" in sid:
             sid = sid.strip("system")
         else:
             sid = -1
-    except:
+    except (OSError, subprocess.SubprocessError, UnicodeError):
         sid = -1
     return str(sid)
 

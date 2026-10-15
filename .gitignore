@@ -3,8 +3,7 @@
 
 # Local WandB runs
 /wandb/
-/icrl/wandb/run-*/
-/icrl/wandb/latest-run
+/icrl/wandb/
 
 ### Python ###
 # Byte-compiled / optimized / DLL files
@@ -194,3 +193,6 @@ poetry.toml
 .history
 .ionide
 
+
+# Local training outputs
+/icrl/runs/

@@ -10,12 +10,14 @@ from stable_baselines3.common.evaluation import evaluate_policy, evaluate_policy
 from stable_baselines3.common.logger import ERROR
 from stable_baselines3.common.vec_env import sync_envs_normalization, VecNormalize
 import icrl.utils as utils
-import wandb
 from icrl.constraint_net import ConstraintNet, plot_constraints, evaluate_constraint_accuracy
 from icrl.true_constraint_net import get_true_cost_function, null_cost
 import gc
 
 def pucl(config):
+    if config.use_wandb:
+        global wandb
+        import wandb
     # the cost wrapper is only used for custom environments.
     use_cost_wrapper_train = True
     use_cost_wrapper_eval = False
@@ -50,7 +52,8 @@ def pucl(config):
         action_low, action_high = sampling_env.action_space.low, sampling_env.action_space.high
 
     # loading the expert data
-    (expert_obs, expert_acs, expert_reward), expert_lengths, expert_mean_reward = utils.load_expert_data(config.expert_path, config.expert_rollouts)
+    (expert_obs, expert_acs, expert_reward), expert_lengths, expert_mean_reward = utils.load_expert_data(
+        config.expert_path, config.expert_rollouts, selection_seed=config.seed)
 
     # Set the starting point of the evaluation environment to be the same as the expert data for fair comparison
     start_indices = np.cumsum(np.insert(expert_lengths[:-1], 0, 0))
@@ -263,6 +266,7 @@ def pucl(config):
         metrics.update(backward_metrics)
         metrics.update(accuracy_metrics)
 
+        utils.append_local_metrics(config.save_dir, metrics)
         if config.use_wandb:
             wandb.log(metrics)
 
@@ -437,7 +441,8 @@ def main():
     # parser.add_argument('--action_clip_value', '-acv', type=float, default=0.25)
     # parser.add_argument('--position_limit', '-posl', type=float, default=13.0)
     parser.add_argument('--use_true_constraint', '-utc', action='store_true')
-    parser.add_argument('--use_wandb', '-dwb', action='store_false')
+    parser.add_argument('--use_wandb', '-uwb', action='store_true', default=False)
+    parser.add_argument('--no_wandb', '-dwb', dest='use_wandb', action='store_false')
     parser.add_argument('--use_memory', '-um', action='store_true')
     parser.add_argument('--evaluation_episode_num', '-een', type=int, default=20)
     parser.add_argument('--make_video_every', '-mve', type=int, default=99)
@@ -492,6 +497,8 @@ def main():
     config['name'] = utils.get_name(parser, default_config, config, mod_name)
 
     if config['use_wandb']:
+        global wandb
+        import wandb
         import os
         # os.environ["WANDB_MODE"] = "offline"
         wandb.init(project=config['project'], name=config['name'], config=config, dir='./icrl', group=config['group'])
@@ -501,10 +508,7 @@ def main():
         print(utils.colorize('name: %s' % config.name, color='green', bold=True))
         utils.save_dict_as_json(config.as_dict(), config.save_dir, 'config')
     else:
-        save_dir = './icrl/wandb/temporary/'
-        utils.del_and_make(save_dir)
-        config['save_dir'] = save_dir
-        config = utils.Dict2Class(config)
+        config = utils.create_local_run(config)
 
     # calling the pucl algorithm
     pucl(config)

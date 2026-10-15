@@ -1,4 +1,7 @@
 from itertools import accumulate
+import json
+from pathlib import Path
+import warnings
 from typing import Any, Callable, Dict, Optional, Tuple, Type, Union
 import matplotlib.pyplot as plt
 import numpy as np
@@ -47,7 +50,7 @@ class ConstraintNet(nn.Module):
             device: str = 'cpu',
             loss_type: str = 'bce',
             sbce_coe: float = 0.3,
-            manual_threshold: float = 0.7,
+            manual_threshold: float = 0.5,
             weight_expert_loss: float = 1.0,
             weight_nominal_loss: float = 1.0
         ):
@@ -129,6 +132,24 @@ class ConstraintNet(nn.Module):
         #     return self.network(th.Tensor(inx))
         # else:
         return self.network(x)
+
+    def local_curvature_loss(self, inputs, radius, generator=None, directions=None):
+        """Isotropic local smoothness; uses predictions only, never true labels.
+
+        Dividing the central difference by radius penalizes local changes in
+        directional slope. No axis, surface shape or obstacle geometry is used.
+        """
+        if not np.isfinite(radius) or radius <= 0:
+            raise ValueError('smoothness radius must be finite and positive')
+        if directions is None:
+            directions = torch.randn(inputs.shape, dtype=inputs.dtype,
+                                     device=inputs.device, generator=generator)
+        directions = directions / directions.norm(dim=1, keepdim=True).clamp_min(1e-12)
+        delta = radius * directions
+        # Batch all three forward passes together. No NumPy/no_grad here.
+        values = self(torch.cat([inputs + delta, inputs, inputs - delta], dim=0))
+        plus, center, minus = values.chunk(3, dim=0)
+        return (((plus - 2 * center + minus) / radius) ** 2).mean()
 
     def cost_function(self, obs: np.ndarray, acs: np.ndarray) -> np.ndarray:
         # The cost function for learning the policy, which works like a penalty.
@@ -411,6 +432,7 @@ class ConstraintNet(nn.Module):
         # First -step ,selecting appropriate reliable infeasible data
         nominal_data = self.select_appropriate_dims(np.concatenate([nominal_obs, nominal_acs], axis=-1))
         expert_data = self.select_appropriate_dims(np.concatenate([expert_obs, expert_acs], axis=-1))
+        rn_before_aret = None
         # Identify the reliable nominal data only if the nominal data is not empty
         if nominal_data.size != 0:
             if pu_config.rn_decision_method == 'GPU':   # Generative PU learning
@@ -537,6 +559,7 @@ class ConstraintNet(nn.Module):
                 distances, indices = knn.kneighbors(nominal_data)
                 distances_sum = np.mean(distances, axis=1)
                 rn_nominal_index = distances_sum > pu_config.kNN_thresh
+                rn_before_aret = rn_nominal_index.copy()
 
                 # Add the most reliable infeasible data from each trajectory
                 if pu_config.add_rn_each_traj and rn_nominal_index.any()==True:
@@ -570,6 +593,20 @@ class ConstraintNet(nn.Module):
         nominal_data = self.prepare_data(nominal_obs, nominal_acs)
         expert_data = self.prepare_data(expert_obs, expert_acs)
 
+        smoothness_coeff = float(getattr(pu_config, 'cn_smoothness_coeff', 0.0))
+        smoothness_radius = float(getattr(pu_config, 'cn_smoothness_radius', 0.01))
+        smoothness_batch_size = int(getattr(pu_config, 'cn_smoothness_batch_size', 64))
+        if not np.isfinite(smoothness_coeff) or smoothness_coeff < 0:
+            raise ValueError('smoothness coefficient must be finite and nonnegative')
+        if smoothness_coeff > 0 and (smoothness_radius <= 0 or not np.isfinite(smoothness_radius)
+                                    or smoothness_batch_size <= 0):
+            raise ValueError('smoothness radius and batch size must be positive')
+        smoothness_generator = None
+        if smoothness_coeff > 0:
+            smoothness_generator = torch.Generator(device=expert_data.device)
+            smoothness_generator.manual_seed(int(getattr(pu_config, 'seed', 0)) + 9173)
+        smoothness_loss_value = 0.0
+
         #  The second step -------------------
         # Learning the constraint model.
         # If refine_iterations is greater than 1, the model will expand the RN data and retrain the model.
@@ -580,6 +617,9 @@ class ConstraintNet(nn.Module):
             expert_labels = torch.ones(expert_data.shape[0], 1, device=device)
             combined_data = torch.cat((rn_nominal_data, expert_data), dim=0)
             combined_labels = torch.cat((nominal_labels, expert_labels), dim=0)
+            # Unlabelled anchors are derived from observed data only. Sampling
+            # between data points does not assign a feasible/infeasible label.
+            smoothness_pool = torch.cat((expert_data, nominal_data), dim=0).detach()
             for _ in tqdm(range(iterations)):
                 for batch_indices in self.get_combined(combined_data.shape[0]):
                     # getting a batch
@@ -588,7 +628,17 @@ class ConstraintNet(nn.Module):
                     # making predictions
                     preds = self.__call__(batch)
                     loss_function = nn.BCELoss()
-                    loss = loss_function(preds, label)
+                    classification_loss = loss_function(preds, label)
+                    loss = classification_loss
+                    if smoothness_coeff > 0:
+                        shape = (smoothness_batch_size,)
+                        first = torch.randint(len(smoothness_pool), shape, device=device, generator=smoothness_generator)
+                        second = torch.randint(len(smoothness_pool), shape, device=device, generator=smoothness_generator)
+                        mix = torch.rand((smoothness_batch_size, 1), device=device, generator=smoothness_generator)
+                        anchors = mix * smoothness_pool[first] + (1 - mix) * smoothness_pool[second]
+                        smoothness_loss = self.local_curvature_loss(anchors, smoothness_radius, smoothness_generator)
+                        loss = loss + smoothness_coeff * smoothness_loss
+                        smoothness_loss_value = smoothness_loss.detach().item()
 
                     # updating the network
                     self.optimizer.zero_grad()
@@ -603,6 +653,9 @@ class ConstraintNet(nn.Module):
             bw_metrics = {}
         else:
             bw_metrics = {'backward/cn_loss': loss.item(),
+                          'backward/cn_classification_loss': classification_loss.item(),
+                          'backward/cn_smoothness_loss': smoothness_loss_value,
+                          'backward/cn_weighted_smoothness_loss': smoothness_coeff * smoothness_loss_value,
                           'backward/nominal_preds_max': th.max(nominal_preds).item(),
                           'backward/nominal_preds_min': th.min(nominal_preds).item(),
                           'backward/nominal_preds_mean': th.mean(nominal_preds).item(),
@@ -611,6 +664,16 @@ class ConstraintNet(nn.Module):
                           'backward/expert_preds_mean': th.mean(expert_preds).item(),
                           }
 
+        if rn_before_aret is not None and getattr(pu_config, 'train_env_id', None) == 'KukaCup1-v0':
+            cuts = np.cumsum(nominal_len.astype(int))[:-1]
+            bw_metrics.update({
+                'backward/rn_before_aret': int(rn_before_aret.sum()),
+                'backward/rn_after_aret': int(rn_nominal_index.sum()),
+                'backward/rn_added_by_aret': int((rn_nominal_index & ~rn_before_aret).sum()),
+                'backward/rn_removed_by_aret': int((rn_before_aret & ~rn_nominal_index).sum()),
+                'backward/trajectories_without_rn_before_aret': sum(not part.any() for part in np.split(rn_before_aret, cuts)),
+                'backward/trajectories_without_rn_after_aret': sum(not part.any() for part in np.split(rn_nominal_index, cuts)),
+            })
         rn_nominal_obs = nominal_obs[rn_nominal_index]
         return expert_distribution, rn_nominal_obs, bw_metrics # Return the expert distribution fitted by GMM for future plotting
 
@@ -736,7 +799,8 @@ class ConstraintNet(nn.Module):
     def save(self, save_path):
         state_dict = dict(
                 cn_network=self.network.state_dict(),
-                cn_optimizer=self.optimizer.state_dict(),
+                cn_optimizer=self.optimizer.state_dict() if self.optimizer is not None else None,
+                manual_threshold=self.manual_threshold,
                 obs_dim=self.obs_dim,
                 acs_dim=self.acs_dim,
                 is_discrete=self.is_discrete,
@@ -756,8 +820,31 @@ class ConstraintNet(nn.Module):
         state_dict = th.load(load_path)
         if 'cn_network' in state_dict:
             self.network.load_state_dict(state_dict['cn_network'])
-        if 'cn_optimizer' in state_dict and self.optimizer is not None:
+        self.manual_threshold = self._checkpoint_threshold(load_path, state_dict)
+        if state_dict.get('cn_optimizer') is not None and self.optimizer is not None:
             self.optimizer.load_state_dict(state_dict['cn_optimizer'])
+
+    @staticmethod
+    def _checkpoint_threshold(load_path, state_dict, override=None):
+        if override is not None:
+            return float(override)
+        if 'manual_threshold' in state_dict:
+            return float(state_dict['manual_threshold'])
+        checkpoint = Path(load_path)
+        candidates = [checkpoint.parent / 'config.json']
+        # Legacy layout: files/models/icrl_N_itrs/cn.pt.
+        if checkpoint.parent.parent.name == 'models':
+            candidates.append(checkpoint.parent.parent.parent / 'config.json')
+        for config_path in candidates:
+            if config_path.is_file():
+                with config_path.open() as stream:
+                    config = json.load(stream)
+                if config.get('cn_manual_threshold') is not None:
+                    return float(config['cn_manual_threshold'])
+        warnings.warn('Checkpoint has no saved constraint threshold or matching config; '
+                      'using 0.5. Pass manual_threshold explicitly if training used another value.',
+                      UserWarning, stacklevel=2)
+        return 0.5
 
     # providing basic functionality to load this class
     @classmethod
@@ -775,9 +862,11 @@ class ConstraintNet(nn.Module):
             action_low: Optional[float] = None,
             action_high: Optional[float] = None,
             device: str = 'cpu',
+            manual_threshold: Optional[float] = None,
         ):
 
-        state_dict = th.load(load_path)
+        state_dict = th.load(load_path, map_location=device)
+        manual_threshold = cls._checkpoint_threshold(load_path, state_dict, manual_threshold)
         # if value inputs are not specified, then get them from the state_dict
         if obs_dim is None:
             obs_dim = state_dict['obs_dim']
@@ -807,7 +896,7 @@ class ConstraintNet(nn.Module):
                 obs_dim, acs_dim, hidden_sizes, None, None, optimizer_class=None,
                 is_discrete=is_discrete, obs_select_dim=obs_select_dim, acs_select_dim=acs_select_dim,
                 clip_obs=clip_obs, initial_obs_mean=obs_mean, initial_obs_var=obs_var, action_low=action_low, action_high=action_high,
-                device=device
+                device=device, manual_threshold=manual_threshold
         )
         constraint_net.network.load_state_dict(state_dict['cn_network'])
         return constraint_net
@@ -871,6 +960,9 @@ def plot_constraints(cost_function, manual_threshold, position_limit, env, env_i
     elif 'ReachVelObs' in env_id or 'ReachVel' in env_id:
         plot_for_ReachVel(cost_function, manual_threshold, obs_dim, acs_dim, select_dim, save_name, fig_title,
                           obs_nominal, obs_expert, len_expert, obs_rn)
+    elif env_id == 'KukaCup1-v0':
+        plot_for_KukaCup1(cost_function, manual_threshold, obs_dim, acs_dim, save_name,
+                          fig_title, obs_nominal, obs_expert, obs_rn, keep_open=show)
     elif 'ReachObs' in env_id or 'Reach2Region' in env_id or 'ReachConcave' in env_id:
         plot_for_ReachObs(cost_function, manual_threshold, obs_dim, acs_dim, select_dim, save_name, fig_title,
                           obs_nominal, obs_expert, len_expert, len_nominal, obs_rn, **kwargs)
@@ -1243,6 +1335,61 @@ def plot_for_PointObs(cost_function, manual_threshold, obs_dim, acs_dim, save_na
     # plt.legend(handles[:4], labels[:4])
 
     fig.savefig(save_name, bbox_inches='tight', pad_inches=0.02,dpi=300)
+
+def plot_for_KukaCup1(cost_function, threshold, obs_dim, acs_dim, save_name, title, obs_n, obs_e, obs_rn, keep_open=False):
+    env = gym.make('KukaCup1-v0')
+    try:
+        low, high = env.workspace_low, env.workspace_high
+        fig = plt.figure(figsize=(12, 5))
+        ax = fig.add_subplot(121)
+        X, Y = np.meshgrid(np.linspace(low[0], high[0], 160), np.linspace(low[1], high[1], 160))
+        observations = np.zeros((X.size, obs_dim))
+        observations[:, :3] = np.column_stack([X.ravel(), Y.ravel(), np.full(X.size, (low[2] + high[2]) / 2)])
+        costs = cost_function(observations, np.zeros((X.size, acs_dim))).reshape(X.shape)
+        image = ax.pcolormesh(X, Y, costs, vmin=0, vmax=1, shading='auto', cmap='RdYlGn_r')
+        if costs.min() < threshold < costs.max():
+            ax.contour(X, Y, costs, [threshold], colors='black')
+        fig.colorbar(image, ax=ax, label='constraint cost (z at workspace midpoint)')
+        ax.add_patch(plt.Circle(env.obstacle_center, env.obstacle_radius, fill=False, color='blue'))
+        ax3d = fig.add_subplot(122, projection='3d')
+        for values, color, label in [(obs_e, 'green', 'expert'), (obs_n, 'orange', 'policy'), (obs_rn, 'red', 'reliable infeasible')]:
+            if values is not None and np.asarray(values).size:
+                values = np.asarray(values)
+                ax.scatter(values[:, 0], values[:, 1], s=2, color=color, label=label)
+                ax3d.scatter(values[:, 0], values[:, 1], values[:, 2], s=2, color=color, label=label)
+        # Show the learned 3D decision boundary, evaluated across the workspace.
+        from mpl_toolkits.mplot3d.art3d import Poly3DCollection
+        axes = [np.linspace(low[i], high[i], 48) for i in range(3)]
+        grid = pv.RectilinearGrid(*axes)
+        grid_observations = np.zeros((grid.n_points, obs_dim))
+        grid_observations[:, :3] = grid.points
+        grid_costs = np.concatenate([
+            np.asarray(cost_function(batch, np.zeros((len(batch), acs_dim)))).reshape(-1)
+            for batch in np.array_split(grid_observations, 16)
+        ])
+        grid.point_data['cost'] = grid_costs
+        if grid_costs.min() < threshold < grid_costs.max():
+            surface = grid.contour([threshold], scalars='cost').triangulate()
+            if surface.n_cells:
+                triangles = surface.points[surface.faces.reshape(-1, 4)[:, 1:]]
+                ax3d.add_collection3d(Poly3DCollection(
+                    triangles, facecolors='crimson', edgecolors='none', alpha=0.22))
+        else:
+            status = 'All feasible' if grid_costs.max() <= threshold else 'All infeasible'
+            ax3d.text2D(0.02, 0.95, status + ' at sampled grid points', transform=ax3d.transAxes)
+        ax.set(xlim=(low[0], high[0]), ylim=(low[1], high[1]), xlabel='x (m)', ylabel='y (m)', title=title)
+        ax.set_aspect('equal')
+        ax3d.set(xlim=(low[0], high[0]), ylim=(low[1], high[1]), zlim=(low[2], high[2]),
+                 xlabel='x (m)', ylabel='y (m)', zlabel='z (m)', title='learned constraint (red) and trajectories')
+        ax3d.set_box_aspect(high - low)
+        ax.legend()
+        fig.tight_layout()
+        fig.savefig(save_name, bbox_inches='tight')
+        if not keep_open:
+            plt.close(fig)
+    finally:
+        env.close()
+
 
 def plot_for_ReachObs(cost_function, manual_threshold, obs_dim, acs_dim, cn_obs_select_dim, save_name, fig_title, obs_n, obs_e, len_e, len_n, obs_rn, gmm=None, **kwargs
                    ):
@@ -1617,6 +1764,19 @@ def evaluate_constraint_accuracy(env_id, learned_cost_function, true_cost_functi
             true_constraint = true_cost_function(obs, action)  # 1 is infeasible
             learned_constraint = learned_cost_function(obs, action)
 
+        elif env_id == 'KukaCup1-v0':
+            env = gym.make(env_id)
+            try:
+                axes = [np.linspace(low, high, 40) for low, high in zip(env.workspace_low, env.workspace_high)]
+                X, Y, Z = np.meshgrid(*axes, indexing='ij')
+                obs = np.zeros((X.size, obs_dim))
+                obs[:, :3] = np.column_stack([X.ravel(), Y.ravel(), Z.ravel()])
+                action = np.zeros((X.size, acs_dim))
+                true_constraint = true_cost_function(obs, action)
+                learned_constraint = learned_cost_function(obs, action)
+            finally:
+                env.close()
+
         elif env_id in ['ReachObs-v0']:
             x_lim = [0.45, 0.65]
             y_lim = [-0.1, 0.1]
@@ -1937,5 +2097,3 @@ def synthesis_query(pos_data, neg_data, n_synthesis_data, n_query_data, cost_fun
     # plt.title('Kernel Density Estimation and Scatter Plot')
     # plt.show()
     return query_data
-
-

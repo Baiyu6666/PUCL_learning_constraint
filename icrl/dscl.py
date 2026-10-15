@@ -10,14 +10,49 @@ from stable_baselines3.common.evaluation import evaluate_policy, evaluate_policy
 from stable_baselines3.common.vec_env import sync_envs_normalization, VecNormalize
 from tqdm import tqdm
 import icrl.utils as utils
-import wandb
 from icrl.constraint_net import ConstraintNet, plot_for_PointObs, plot_constraints, evaluate_constraint_accuracy, evaluate_policy_accuracy
 from icrl.true_constraint_net import get_true_cost_function, null_cost
 from icrl.ds_policy import DS_Policy
+from icrl.goal_reaching_evaluation import evaluate_goal_reaching_policy
+
+def resolve_cn_smoothness_coeff(env_id, coefficient):
+    """Use the tested Kuka default, while retaining explicit ablation settings."""
+    if coefficient is None:
+        return 0.01 if env_id == 'KukaCup1-v0' else 0.0
+    return coefficient
+
+
+def resolve_select_policy_excerpts(env_id, enabled):
+    if enabled is None:
+        return env_id == 'KukaCup1-v0'
+    return enabled
+
 
 def dscl(config):
+    if config.use_wandb:
+        global wandb
+        import wandb
+    config.cn_smoothness_coeff = resolve_cn_smoothness_coeff(
+        config.train_env_id, getattr(config, 'cn_smoothness_coeff', None))
+    config.select_policy_excerpts = resolve_select_policy_excerpts(
+        config.train_env_id, getattr(config, 'select_policy_excerpts', None))
     # Initialize DS agent and specify the target point
-    if 'ReachConcave' in config.train_env_id:
+    if config.train_env_id == 'KukaCup1-v0':
+        # Each demonstration stores its own target in obs[3:6] = goal - position.
+        nominal_agent = DS_Policy(3, lambda x: 2.0 * x[3:6], stable_modulation_basis=True)
+        if list(config.cn_obs_select_dim) != [0, 1, 2] or list(config.cn_acs_select_dim) != [-1]:
+            raise ValueError('KukaCup1 learns position only: use -cosd 0 1 2 -casd -1.')
+        if not config.dont_normalize_obs or config.cn_normalize:
+            raise ValueError('KukaCup1 DS policy uses physical coordinates: use -dno without -cn.')
+        if config.eval_env_id != 'KukaCup1-v0':
+            raise ValueError('KukaCup1 training and evaluation must use the same task environment.')
+        if not config.dont_normalize_reward or not config.dont_normalize_cost:
+            raise ValueError('KukaCup1 path-length comparisons require -dnr -dnc.')
+        if config.ds_modulation_with_refer_point:
+            point = np.asarray(getattr(config, 'ds_reference_point', None), dtype=float)
+            if point.shape not in ((2,), (3,)) or not np.isfinite(point).all():
+                raise ValueError('KukaCup1 reference modulation requires --ds_reference_point X Y [Z].')
+    elif 'ReachConcave' in config.train_env_id:
         A = np.diag([-2, -2, -2])
         linear_ds = lambda x: A @ (x[:3] - np.array([0.68, 0, 0.04]))
         nominal_agent = DS_Policy(3, linear_ds)
@@ -70,11 +105,18 @@ def dscl(config):
 
     # loading the expert data
     (expert_obs, expert_acs, expert_reward), expert_lengths, expert_mean_reward = utils.load_expert_data(
-        config.expert_path, config.expert_rollouts)
+        config.expert_path, config.expert_rollouts,
+        selection_seed=config.seed)
     # Set the eval starting point to be the same as expert data for fair comparison.
     start_indices = np.cumsum(np.insert(expert_lengths[:-1], 0, 0))
     starting_points = expert_obs[start_indices]
     eval_env.env_method('set_starting_point', starting_points)
+    if config.train_env_id == 'KukaCup1-v0':
+        # Record geometry/dynamics and the exact selected start-goal pairs.
+        task_config = sampling_env.get_attr('task_config')[0]
+        task_config['tasks'] = [{'start': row[:3].tolist(), 'goal': (row[:3] + row[3:6]).tolist()}
+                                for row in starting_points]
+        utils.save_dict_as_json(task_config, config.save_dir, 'task_config')
 
     # initializing the constraint net
     cn_lr_schedule = lambda x: (config.anneal_clr_by_factor**(config.n_iters*(1-x))) * config.cn_learning_rate
@@ -126,7 +168,13 @@ def dscl(config):
         if itr > 0: # skip the first iteration since the initial constraint network is usually terrible
             constraint_net_static = copy.deepcopy(constraint_net) # the policy is always with respect to the last constraint network.
             if config.ds_modulation_with_refer_point:
-                nominal_agent.modulate_with_NN_with_refer_point(constraint_net_static.build_gamma_with_grad_for_ds, config.ds_modulation_rho)
+                if config.train_env_id == 'KukaCup1-v0':
+                    nominal_agent.modulate_with_NN_with_refer_point(
+                        constraint_net_static.build_gamma_with_grad_for_ds,
+                        refer_point=config.ds_reference_point, rho=config.ds_modulation_rho)
+                else:
+                    # Preserve the legacy call for existing experiment reproduction.
+                    nominal_agent.modulate_with_NN_with_refer_point(constraint_net_static.build_gamma_with_grad_for_ds, config.ds_modulation_rho)
             else:
                 nominal_agent.modulate_with_NN(constraint_net_static.build_gamma_with_grad_for_ds, config.ds_modulation_rho)
 
@@ -166,6 +214,20 @@ def dscl(config):
                 _, rn_nominal_obs, backward_metrics = constraint_net.train_with_two_step_pu_learning(
                     config.backward_iters, expert_obs, expert_acs, nominal_obs_memory, nominal_acs_memory,
                     nominal_len_memory, config)
+            if config.train_env_id == 'KukaCup1-v0':
+                utils.save_dict_as_json(backward_metrics, config.save_dir, f'training_{itr}')
+        if config.train_env_id == 'KukaCup1-v0':
+            utils.save_dict_as_json({
+                'iteration': itr,
+                'spe': bool(config.select_policy_excerpts),
+                'candidate_trajectories': int(len(expert_lengths) * config.rollouts_per_demonstration),
+                'retained_trajectories': int(len(nominal_len)),
+                'retained_points': int(len(nominal_obs)),
+                'retained_returns': np.asarray(nominal_rew).reshape(-1).tolist(),
+                'memory_trajectories': int(len(nominal_len_memory)),
+                'memory_points': int(len(nominal_obs_memory)),
+                'reliable_infeasible_points': int(len(rn_nominal_obs)) if itr < config.n_iters else None,
+            }, config.save_dir, f'sampling_{itr}')
         # --------------------------------
         # Save:
         # plotting
@@ -182,9 +244,22 @@ def dscl(config):
         if itr % config.eval_every == 0 or itr == config.n_iters:
             # evaluating the reward in the true environment
             sync_envs_normalization(train_env, eval_env)
-            average_true_feasible_reward, average_true_reward, average_true_cost, true_safe_portion, average_episode_length = evaluate_policy_with_cost(
-                nominal_agent, eval_env, true_cost_function, n_eval_episodes=config.evaluation_episode_num,
-                deterministic=False)
+            if config.train_env_id == 'KukaCup1-v0':
+                eval_env.env_method('set_starting_point', starting_points)
+                # Evaluate whole task cycles so every start-goal pair has equal weight.
+                task_count = len(starting_points)
+                episode_count = max(1, int(np.ceil(config.evaluation_episode_num / task_count))) * task_count
+                goal_metrics = evaluate_goal_reaching_policy(nominal_agent, eval_env, true_cost_function, episode_count)
+                average_true_feasible_reward = goal_metrics['feasible_reward']
+                average_true_reward = goal_metrics['average_reward']
+                average_true_cost = goal_metrics['violation_steps_portion']
+                true_safe_portion = goal_metrics['safe_portion']
+                average_episode_length = goal_metrics['average_episode_length']
+                utils.save_dict_as_json(goal_metrics, config.save_dir, f'evaluation_{itr}')
+            else:
+                average_true_feasible_reward, average_true_reward, average_true_cost, true_safe_portion, average_episode_length = evaluate_policy_with_cost(
+                    nominal_agent, eval_env, true_cost_function, n_eval_episodes=config.evaluation_episode_num,
+                    deterministic=False)
 
             # evaluating the accuracy of constraint net
             accuracy_metrics = evaluate_constraint_accuracy(config.train_env_id,
@@ -231,6 +306,11 @@ def dscl(config):
                     }
             metrics.update(backward_metrics)
             metrics.update(accuracy_metrics)
+            if config.train_env_id == 'KukaCup1-v0':
+                metrics.update({'true/goal_reached_portion': goal_metrics['goal_reached_portion'],
+                                'true/safe_goal_reached_portion': goal_metrics['safe_goal_reached_portion'],
+                                'true/average_path_length': goal_metrics['average_path_length']})
+            utils.append_local_metrics(config.save_dir, metrics)
             if config.use_wandb:
                 wandb.log(metrics)
 
@@ -249,6 +329,9 @@ def dscl(config):
                 constraint_images.append(wandb.Image(path, caption=f'Ite {itr}'))
         wandb.log({'constraint_images': constraint_images})
         # utils.eval_and_make_video(eval_env, nominal_agent, config.save_dir, 'final_policy')
+    train_env.close()
+    sampling_env.close()
+    eval_env.close()
 
     if config.sync_wandb and config.use_wandb:
         utils.sync_wandb(config.save_dir, 120)
@@ -290,6 +373,8 @@ def main():
     # ====================== DS policy  ======================== #
     parser.add_argument('--ds_modulation_rho', '-dmr', type=float, default=0.2)
     parser.add_argument('--ds_modulation_with_refer_point', '-dmwr', action='store_true')
+    parser.add_argument('--ds_reference_point', type=float, nargs='+', default=None,
+                        help='Kuka controller reference with -dmwr: XY follows current z; XYZ fixes a point.')
     parser.add_argument('--num_threads', '-nt', type=int, default=1)
     parser.add_argument('--train_constraint_with_true_data', '-tcwd', action='store_true')
     parser.add_argument('--save_every', '-se', type=float, default=1)
@@ -330,6 +415,10 @@ def main():
     parser.add_argument('--cn_eps', '-ce', type=float, default=1e-5)
     parser.add_argument('--cn_loss_type', '-clt', type=str, default='bce')  # options: ml, bce, sbce
     parser.add_argument('--cn_manual_threshold', '-cmt', type=float, default=0.5)
+    parser.add_argument('--cn_smoothness_coeff', type=float, default=None,
+                        help='Default: 0.01 for KukaCup1-v0, 0 for other environments; explicit 0 disables it.')
+    parser.add_argument('--cn_smoothness_radius', type=float, default=0.01)
+    parser.add_argument('--cn_smoothness_batch_size', type=int, default=64)
     # ====================== PU learning ========================= #
     parser.add_argument('--refine_iterations', '-ri', type=int, default=1)
     parser.add_argument('--rn_decision_method', '-rdm', type=str, default='kNN')
@@ -351,8 +440,12 @@ def main():
     parser.add_argument('--action_clip_value', '-acv', type=float, default=0.25)
     parser.add_argument('--position_limit', '-posl', type=float, default=13.0)
     parser.add_argument('--use_true_constraint', '-utc', action='store_true')
-    parser.add_argument('--use_wandb', '-uwb', type=bool, default=True)
-    parser.add_argument('--select_policy_excerpts', '-spe', action='store_true')
+    parser.add_argument('--use_wandb', '-uwb', action='store_true', default=False)
+    parser.add_argument('--no_wandb', '-dwb', dest='use_wandb', action='store_false')
+    parser.add_argument('--select_policy_excerpts', '-spe', action='store_true', default=None,
+                        help='Enable trajectory filtering (default on for KukaCup1-v0, off elsewhere).')
+    parser.add_argument('--no_select_policy_excerpts', '--no-spe', dest='select_policy_excerpts',
+                        action='store_false', default=None, help='Explicitly disable trajectory filtering.')
     parser.add_argument('--policy_episode_length', '-pel', type=int, default=250)
     parser.add_argument('--expert_episode_length', '-eel', type=int, default=150)
     parser.add_argument('--evaluation_episode_num', '-een', type=int, default=30)
@@ -363,6 +456,11 @@ def main():
     # overwriting config file with parameters supplied through parser
     # order of priority: supplied through command line > specified in config file > default values in parser
     config = utils.merge_configs(default_config, parser, sys.argv[1:])
+    # Resolve before naming/logging so saved configs contain the effective value.
+    config['cn_smoothness_coeff'] = resolve_cn_smoothness_coeff(
+        config['train_env_id'], config.get('cn_smoothness_coeff'))
+    config['select_policy_excerpts'] = resolve_select_policy_excerpts(
+        config['train_env_id'], config.get('select_policy_excerpts'))
     # config = vars(argparse.Namespace(**config))
 
     if config['debug_mode']:  # this is for a fast debugging, use python train_icrl.py -dm to enable the debug model
@@ -386,6 +484,8 @@ def main():
     config['name'] = utils.get_name(parser, default_config, config, mod_name)
 
     if config['use_wandb']:
+        global wandb
+        import wandb
         import os
         # os.environ["WANDB_MODE"] = "offline"
         wandb.init(project=config['project'], name=config['name'], config=config, dir='./icrl', group=config['group'])
@@ -395,10 +495,7 @@ def main():
         print(utils.colorize('name: %s' % config.name, color='green', bold=True))
         utils.save_dict_as_json(config.as_dict(), config.save_dir, 'config')
     else:
-        save_dir = './icrl/wandb/temporary/'
-        utils.del_and_make(save_dir)
-        config['save_dir'] = save_dir
-        config = utils.Dict2Class(config)
+        config = utils.create_local_run(config)
 
     # calling the icrl algorithm
 

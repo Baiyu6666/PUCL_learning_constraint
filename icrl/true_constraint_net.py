@@ -44,7 +44,7 @@ def get_true_cost_function(env_id):
     elif env_id in ["PointEllip-v0", 'PointEllipTest-v0']:
         point_env = gym.make('PointEllipTest-v0')
         return point_env.true_cost_function
-    elif env_id in ["ReachObs-v0", "ReachVelObs-v0", "ReachConcaveObs-v0", "Reach2RegionObs-v0", "ReachVel-v0"]:
+    elif env_id in ["ReachObs-v0", "ReachVelObs-v0", "ReachConcaveObs-v0", "Reach2RegionObs-v0", "ReachVel-v0", "KukaCup1-v0"]:
         env = gym.make(env_id)
         return env.true_cost_function
     else:

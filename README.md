@@ -8,11 +8,47 @@ pip install -r requirements.txt
 pip install -e ./custom_envs 
 ```
 
-In addition, you will need to setup a (free) [wandb](www.wandb.ai) account. 
+Training saves results locally by default; no WandB account is needed.
 
 To run any experiment present in the code, go to the main directory and run a command from the following list. Experiments typically take 10-30 minutes to complete.
 
 ## Running Constraint Learning Experiments 
+
+### KukaCup1: iiwa7 Cartesian reaching
+
+A 3D point-reaching task with a different start and goal for each demonstration.
+The constraint network learns **XYZ position only**. Reward is negative path
+length, with a timeout penalty; episodes last at most **200 steps**.
+The 10 demonstrations in `icrl/expert_data/KukaCup1` are already resampled to
+100 positions (99 transitions) each.
+
+The default evaluation obstacle is an estimated vertical cylinder with XY center
+`[0.60, -0.08]` and radius 0.04 m. Its geometry is not used as training labels.
+
+Run from the repository root with the `pucl-public` Conda environment activated:
+
+```bash
+OMP_NUM_THREADS=1 MKL_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 \
+python run_me.py dscl -g KukaCup1-reference \
+  -tei KukaCup1-v0 -eei KukaCup1-v0 \
+  -ep icrl/expert_data/KukaCup1 -er 10 -cosd 0 1 2 \
+  -dno -dnr -dnc -rg 1 -cl 32 32 -clr 0.005 \
+  -ni 10 -bi 300 -cbs 256 -een 10 -cpe 1 \
+  -twm -kNNt 0.03 -dmwr --ds_reference_point 0.60 -0.06
+```
+
+This uses 10 PUCL updates, 300 constraint-training epochs per update, SPE,
+shape-independent smoothness regularization, and reference DS modulation.
+Defaults supply seed 23, CPU, threshold 0.5, rho 0.2, evaluation/checkpointing
+every update, and (for KukaCup1) SPE and smoothness coefficient 0.01.
+The reference is `[0.60, -0.06, current_z]`, a manually chosen controller prior.
+ARET is off. For ablations, use `--no-spe`, `--cn_smoothness_coeff 0`, or remove
+`-dmwr --ds_reference_point 0.60 -0.06` for ordinary modulation.
+
+Results are saved in a new `icrl/runs/<environment>-<timestamp>-*/files/` directory
+for each run: `config.json`, `metrics.jsonl`,
+per-iteration evaluation records, and `models/icrl_*_itrs/cn.pt` checkpoints.
+To rebuild the expert rollouts, run `python icrl/tests/prepare_kuka_cup1_data.py`.
 
 ### 2D reach with position constraint 
 ```bash
@@ -89,9 +125,3 @@ python run_me.py dscl -g test -cl 16 16 -ni 18 -clr 0.005 -dno -dnc -dnr -tei Re
 # Please check ds_policy.py and plots/render_reach_env_bullet.py
 
 ``` 
-
-
-
-
-
-

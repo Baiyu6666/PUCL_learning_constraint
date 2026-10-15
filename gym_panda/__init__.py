@@ -1,6 +1,12 @@
 from gym.envs.registration import register
 
 register(
+    id='KukaCup1-v0',
+    entry_point='gym_panda.envs:KukaCup1',
+    max_episode_steps=200,
+)
+
+register(
     id='ReachObs-v0',
     entry_point='gym_panda.envs:ReachObs',
     max_episode_steps=400,
@@ -45,4 +51,3 @@ register(
     id='kuka-v0',
     entry_point='gym_panda.envs:KukaEnv',
 )
-

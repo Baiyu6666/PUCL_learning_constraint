@@ -1,0 +1,651 @@
+{
+  "schema_version": 1,
+  "environment_name": "KukaCup1",
+  "data_role": "expert_demonstrations",
+  "format": "original_npz_segments",
+  "source_repository": "https://github.com/epfl-lasa/constraint_learning_robot_interface",
+  "source_commit": "d1ebe5f23640ea0bfe36dea1257c72b1eb8f29dc",
+  "source_session": "20261014T145258_698149Z_demo_03",
+  "selected_demo_ids": [
+    "demo_04",
+    "demo_09",
+    "demo_10",
+    "demo_19",
+    "demo_20",
+    "demo_23",
+    "demo_24",
+    "demo_25",
+    "demo_27",
+    "demo_29"
+  ],
+  "num_demonstrations": 10,
+  "total_samples": 16122,
+  "conversion_status": "pucl_rollouts_ready",
+  "notes": [
+    "raw/ arrays are unchanged; converted rollouts use Cartesian position only.",
+    "Goals are individual demonstration endpoints. Each converted trajectory stops at its first goal-tolerance hit.",
+    "Converted trajectories are resampled to 100 positions by uniform arc length, including both endpoints.",
+    "Actions are derived from displacement / step_size; no measured action or reward exists in the source.",
+    "Rewards are negative accumulated Cartesian path length in metres.",
+    "Fill obstacle_center and obstacle_radius in task_config.json before using the environment."
+  ],
+  "demonstrations": [
+    {
+      "demo_id": "demo_04",
+      "file": "raw/demo_04.npz",
+      "source_file": "constraint_learning_robot_interface/data/tasks/obsavoid/demos/iiwa7_obsavoid/20261014T145258_698149Z_demo_03/analysis/segments/demo_04.npz",
+      "sha256": "67a47d6b91b8d009f26b3523cce0903cf4b912ed2ff902bd8cd9aa73eec17800",
+      "num_samples": 1576,
+      "duration_seconds": 7.875160756999996,
+      "median_dt_seconds": 0.004996677999997701,
+      "arrays": {
+        "t": {
+          "shape": [
+            1576
+          ],
+          "dtype": "float64"
+        },
+        "t_abs": {
+          "shape": [
+            1576
+          ],
+          "dtype": "float64"
+        },
+        "angles": {
+          "shape": [
+            1576,
+            7
+          ],
+          "dtype": "float64"
+        },
+        "poses": {
+          "shape": [
+            1576,
+            7
+          ],
+          "dtype": "float64"
+        }
+      }
+    },
+    {
+      "demo_id": "demo_09",
+      "file": "raw/demo_09.npz",
+      "source_file": "constraint_learning_robot_interface/data/tasks/obsavoid/demos/iiwa7_obsavoid/20261014T145258_698149Z_demo_03/analysis/segments/demo_09.npz",
+      "sha256": "6f48f5965022987ee9d8a74502f37fd95330c0290c183c5b80ef8da163ef516c",
+      "num_samples": 1625,
+      "duration_seconds": 8.120057548000005,
+      "median_dt_seconds": 0.004999165999997501,
+      "arrays": {
+        "t": {
+          "shape": [
+            1625
+          ],
+          "dtype": "float64"
+        },
+        "t_abs": {
+          "shape": [
+            1625
+          ],
+          "dtype": "float64"
+        },
+        "angles": {
+          "shape": [
+            1625,
+            7
+          ],
+          "dtype": "float64"
+        },
+        "poses": {
+          "shape": [
+            1625,
+            7
+          ],
+          "dtype": "float64"
+        }
+      }
+    },
+    {
+      "demo_id": "demo_10",
+      "file": "raw/demo_10.npz",
+      "source_file": "constraint_learning_robot_interface/data/tasks/obsavoid/demos/iiwa7_obsavoid/20261014T145258_698149Z_demo_03/analysis/segments/demo_10.npz",
+      "sha256": "400a94770b0e3b1aca114a4bdeda7be3ed4929129201e34586588427aedd2222",
+      "num_samples": 1451,
+      "duration_seconds": 7.250180276999998,
+      "median_dt_seconds": 0.004999294500002804,
+      "arrays": {
+        "t": {
+          "shape": [
+            1451
+          ],
+          "dtype": "float64"
+        },
+        "t_abs": {
+          "shape": [
+            1451
+          ],
+          "dtype": "float64"
+        },
+        "angles": {
+          "shape": [
+            1451,
+            7
+          ],
+          "dtype": "float64"
+        },
+        "poses": {
+          "shape": [
+            1451,
+            7
+          ],
+          "dtype": "float64"
+        }
+      }
+    },
+    {
+      "demo_id": "demo_19",
+      "file": "raw/demo_19.npz",
+      "source_file": "constraint_learning_robot_interface/data/tasks/obsavoid/demos/iiwa7_obsavoid/20261014T145258_698149Z_demo_03/analysis/segments/demo_19.npz",
+      "sha256": "9bd4006936d51d3722e1553a4ec99d48d470092df7e95f2182b2c5a7c9032cf6",
+      "num_samples": 1991,
+      "duration_seconds": 9.960094140999985,
+      "median_dt_seconds": 0.004997933500007434,
+      "arrays": {
+        "t": {
+          "shape": [
+            1991
+          ],
+          "dtype": "float64"
+        },
+        "t_abs": {
+          "shape": [
+            1991
+          ],
+          "dtype": "float64"
+        },
+        "angles": {
+          "shape": [
+            1991,
+            7
+          ],
+          "dtype": "float64"
+        },
+        "poses": {
+          "shape": [
+            1991,
+            7
+          ],
+          "dtype": "float64"
+        }
+      }
+    },
+    {
+      "demo_id": "demo_20",
+      "file": "raw/demo_20.npz",
+      "source_file": "constraint_learning_robot_interface/data/tasks/obsavoid/demos/iiwa7_obsavoid/20261014T145258_698149Z_demo_03/analysis/segments/demo_20.npz",
+      "sha256": "4819508635a69264cc52fc0a9a6b1d96dae7621050d5bbc030ab7ff69ce7c8e1",
+      "num_samples": 1395,
+      "duration_seconds": 6.970193127000016,
+      "median_dt_seconds": 0.0049999430000013945,
+      "arrays": {
+        "t": {
+          "shape": [
+            1395
+          ],
+          "dtype": "float64"
+        },
+        "t_abs": {
+          "shape": [
+            1395
+          ],
+          "dtype": "float64"
+        },
+        "angles": {
+          "shape": [
+            1395,
+            7
+          ],
+          "dtype": "float64"
+        },
+        "poses": {
+          "shape": [
+            1395,
+            7
+          ],
+          "dtype": "float64"
+        }
+      }
+    },
+    {
+      "demo_id": "demo_23",
+      "file": "raw/demo_23.npz",
+      "source_file": "constraint_learning_robot_interface/data/tasks/obsavoid/demos/iiwa7_obsavoid/20261014T145258_698149Z_demo_03/analysis/segments/demo_23.npz",
+      "sha256": "9d01afd5de6d540a13ec308819255906bab78f3c4b8da023840ab7c25d8b40d3",
+      "num_samples": 1895,
+      "duration_seconds": 9.469858290000019,
+      "median_dt_seconds": 0.004994934499990222,
+      "arrays": {
+        "t": {
+          "shape": [
+            1895
+          ],
+          "dtype": "float64"
+        },
+        "t_abs": {
+          "shape": [
+            1895
+          ],
+          "dtype": "float64"
+        },
+        "angles": {
+          "shape": [
+            1895,
+            7
+          ],
+          "dtype": "float64"
+        },
+        "poses": {
+          "shape": [
+            1895,
+            7
+          ],
+          "dtype": "float64"
+        }
+      }
+    },
+    {
+      "demo_id": "demo_24",
+      "file": "raw/demo_24.npz",
+      "source_file": "constraint_learning_robot_interface/data/tasks/obsavoid/demos/iiwa7_obsavoid/20261014T145258_698149Z_demo_03/analysis/segments/demo_24.npz",
+      "sha256": "0e409cd962ea333382660eb5e091810c51b62450fed5c77b56746bab06bc06fc",
+      "num_samples": 1362,
+      "duration_seconds": 6.805133425000008,
+      "median_dt_seconds": 0.004998808000010513,
+      "arrays": {
+        "t": {
+          "shape": [
+            1362
+          ],
+          "dtype": "float64"
+        },
+        "t_abs": {
+          "shape": [
+            1362
+          ],
+          "dtype": "float64"
+        },
+        "angles": {
+          "shape": [
+            1362,
+            7
+          ],
+          "dtype": "float64"
+        },
+        "poses": {
+          "shape": [
+            1362,
+            7
+          ],
+          "dtype": "float64"
+        }
+      }
+    },
+    {
+      "demo_id": "demo_25",
+      "file": "raw/demo_25.npz",
+      "source_file": "constraint_learning_robot_interface/data/tasks/obsavoid/demos/iiwa7_obsavoid/20261014T145258_698149Z_demo_03/analysis/segments/demo_25.npz",
+      "sha256": "6542ef05ca08243a95990a46debd3da49d38697b7a0aeae2e504ea4418494af2",
+      "num_samples": 2062,
+      "duration_seconds": 10.305334310000006,
+      "median_dt_seconds": 0.004996196999996982,
+      "arrays": {
+        "t": {
+          "shape": [
+            2062
+          ],
+          "dtype": "float64"
+        },
+        "t_abs": {
+          "shape": [
+            2062
+          ],
+          "dtype": "float64"
+        },
+        "angles": {
+          "shape": [
+            2062,
+            7
+          ],
+          "dtype": "float64"
+        },
+        "poses": {
+          "shape": [
+            2062,
+            7
+          ],
+          "dtype": "float64"
+        }
+      }
+    },
+    {
+      "demo_id": "demo_27",
+      "file": "raw/demo_27.npz",
+      "source_file": "constraint_learning_robot_interface/data/tasks/obsavoid/demos/iiwa7_obsavoid/20261014T145258_698149Z_demo_03/analysis/segments/demo_27.npz",
+      "sha256": "75626dc6be23637b6c697729d66f1cf2e0fab45ae7c1dc9718be7fab61bab5cf",
+      "num_samples": 998,
+      "duration_seconds": 4.984979241000019,
+      "median_dt_seconds": 0.005001868000022114,
+      "arrays": {
+        "t": {
+          "shape": [
+            998
+          ],
+          "dtype": "float64"
+        },
+        "t_abs": {
+          "shape": [
+            998
+          ],
+          "dtype": "float64"
+        },
+        "angles": {
+          "shape": [
+            998,
+            7
+          ],
+          "dtype": "float64"
+        },
+        "poses": {
+          "shape": [
+            998,
+            7
+          ],
+          "dtype": "float64"
+        }
+      }
+    },
+    {
+      "demo_id": "demo_29",
+      "file": "raw/demo_29.npz",
+      "source_file": "constraint_learning_robot_interface/data/tasks/obsavoid/demos/iiwa7_obsavoid/20261014T145258_698149Z_demo_03/analysis/segments/demo_29.npz",
+      "sha256": "10186edf722938bbecb9d6f2c7070bff3c6d8404db425ba4fd2c83852ed159c1",
+      "num_samples": 1767,
+      "duration_seconds": 8.830173073000026,
+      "median_dt_seconds": 0.00499856499999396,
+      "arrays": {
+        "t": {
+          "shape": [
+            1767
+          ],
+          "dtype": "float64"
+        },
+        "t_abs": {
+          "shape": [
+            1767
+          ],
+          "dtype": "float64"
+        },
+        "angles": {
+          "shape": [
+            1767,
+            7
+          ],
+          "dtype": "float64"
+        },
+        "poses": {
+          "shape": [
+            1767,
+            7
+          ],
+          "dtype": "float64"
+        }
+      }
+    }
+  ],
+  "converted_rollouts": [
+    {
+      "demo_id": "demo_04",
+      "rollout_file": "0.pkl",
+      "start": [
+        0.7107143551614045,
+        -0.21796862945773882,
+        0.2611114061516278
+      ],
+      "goal": [
+        0.4504229675753951,
+        0.06726244207249224,
+        0.2686092358347971
+      ],
+      "terminal_position": [
+        0.44313931367794235,
+        0.0652278157870393,
+        0.275073394241175
+      ],
+      "num_transitions": 99,
+      "num_positions": 100,
+      "source_num_positions": 1450,
+      "source_path_length": 0.47213591426019563,
+      "path_length": 0.4675218717071738
+    },
+    {
+      "demo_id": "demo_09",
+      "rollout_file": "1.pkl",
+      "start": [
+        0.48669337152494213,
+        -0.25400028274352077,
+        0.4146453884614513
+      ],
+      "goal": [
+        0.6847351158346948,
+        0.05805081380406393,
+        0.3909854568614648
+      ],
+      "terminal_position": [
+        0.6756530817186452,
+        0.05845306315740716,
+        0.39498130061767184
+      ],
+      "num_transitions": 99,
+      "num_positions": 100,
+      "source_num_positions": 1379,
+      "source_path_length": 0.49006568462503786,
+      "path_length": 0.48952622292117837
+    },
+    {
+      "demo_id": "demo_10",
+      "rollout_file": "2.pkl",
+      "start": [
+        0.6820885323042,
+        0.058030781921476225,
+        0.38742871788609384
+      ],
+      "goal": [
+        0.4947765814221981,
+        -0.24570455938624328,
+        0.38110182752929916
+      ],
+      "terminal_position": [
+        0.4984794421653132,
+        -0.2364234965290169,
+        0.3808537226171502
+      ],
+      "num_transitions": 99,
+      "num_positions": 100,
+      "source_num_positions": 1156,
+      "source_path_length": 0.43831869835020054,
+      "path_length": 0.43784477512994113
+    },
+    {
+      "demo_id": "demo_19",
+      "rollout_file": "3.pkl",
+      "start": [
+        0.595666954755243,
+        -0.26188800155018727,
+        0.25081100418879104
+      ],
+      "goal": [
+        0.6169930411345617,
+        0.14732938051879818,
+        0.2742387091279677
+      ],
+      "terminal_position": [
+        0.6162461164536335,
+        0.1378643762941228,
+        0.2713519273293566
+      ],
+      "num_transitions": 99,
+      "num_positions": 100,
+      "source_num_positions": 1724,
+      "source_path_length": 0.5265764454195887,
+      "path_length": 0.5246703023803065
+    },
+    {
+      "demo_id": "demo_20",
+      "rollout_file": "4.pkl",
+      "start": [
+        0.6203324057088854,
+        0.15341773210206772,
+        0.27428434418658004
+      ],
+      "goal": [
+        0.5896270461187659,
+        -0.2714096019188934,
+        0.27401241933741305
+      ],
+      "terminal_position": [
+        0.5830837544081742,
+        -0.2640110324416942,
+        0.2735672459683365
+      ],
+      "num_transitions": 99,
+      "num_positions": 100,
+      "source_num_positions": 1256,
+      "source_path_length": 0.5153377401964419,
+      "path_length": 0.5149487601993817
+    },
+    {
+      "demo_id": "demo_23",
+      "rollout_file": "5.pkl",
+      "start": [
+        0.4383794894676185,
+        -0.22610340221634528,
+        0.4395008677140312
+      ],
+      "goal": [
+        0.7204133413916723,
+        0.04099257491221403,
+        0.3927268762012479
+      ],
+      "terminal_position": [
+        0.7247203626673742,
+        0.0394364212994745,
+        0.38394613852214865
+      ],
+      "num_transitions": 99,
+      "num_positions": 100,
+      "source_num_positions": 1772,
+      "source_path_length": 0.5492753727878561,
+      "path_length": 0.5468407138615601
+    },
+    {
+      "demo_id": "demo_24",
+      "rollout_file": "6.pkl",
+      "start": [
+        0.7217289801189627,
+        0.04224628041414363,
+        0.3921233512010247
+      ],
+      "goal": [
+        0.47708268955724586,
+        -0.21757077371311273,
+        0.4276464805284787
+      ],
+      "terminal_position": [
+        0.4779483239915138,
+        -0.2077793645109283,
+        0.42887286019220694
+      ],
+      "num_transitions": 99,
+      "num_positions": 100,
+      "source_num_positions": 1236,
+      "source_path_length": 0.4798552917875233,
+      "path_length": 0.4751462088126634
+    },
+    {
+      "demo_id": "demo_25",
+      "rollout_file": "7.pkl",
+      "start": [
+        0.47923245182784685,
+        -0.21664915172907773,
+        0.42574808471473363
+      ],
+      "goal": [
+        0.7528083834935012,
+        0.008945775623628305,
+        0.3971493416973506
+      ],
+      "terminal_position": [
+        0.747101666824398,
+        0.0010107458470949432,
+        0.39761924300525275
+      ],
+      "num_transitions": 99,
+      "num_positions": 100,
+      "source_num_positions": 1668,
+      "source_path_length": 0.4275139672475575,
+      "path_length": 0.4214337494679667
+    },
+    {
+      "demo_id": "demo_27",
+      "rollout_file": "8.pkl",
+      "start": [
+        0.48490918531074667,
+        -0.057141491792390975,
+        0.3941881116206189
+      ],
+      "goal": [
+        0.7704382737210071,
+        -0.08566849251719294,
+        0.35793529629331233
+      ],
+      "terminal_position": [
+        0.7627893571077861,
+        -0.08849276229917391,
+        0.36366031243229063
+      ],
+      "num_transitions": 99,
+      "num_positions": 100,
+      "source_num_positions": 878,
+      "source_path_length": 0.403719779473211,
+      "path_length": 0.4026845651154796
+    },
+    {
+      "demo_id": "demo_29",
+      "rollout_file": "9.pkl",
+      "start": [
+        0.7657751684079228,
+        -0.08600192120425677,
+        0.35633550579071827
+      ],
+      "goal": [
+        0.4834496298501437,
+        -0.04739443681248729,
+        0.3608260316283374
+      ],
+      "terminal_position": [
+        0.4768776740638149,
+        -0.05424563957228232,
+        0.3578731801528904
+      ],
+      "num_transitions": 99,
+      "num_positions": 100,
+      "source_num_positions": 1381,
+      "source_path_length": 0.46190879688919845,
+      "path_length": 0.45860398563216737
+    }
+  ],
+  "downsampling": {
+    "method": "uniform_arc_length",
+    "num_positions_per_demo": 100
+  },
+  "total_training_observations": 990
+}
