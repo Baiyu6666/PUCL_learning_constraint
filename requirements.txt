@@ -19,8 +19,5 @@ pillow
 mpl-scatter-density
 pyvista
 scikit-learn
-mujoco-py==2.0.2.13
 torch==1.12.0
 torchvision==0.13.0
-cython==0.29.32
-
