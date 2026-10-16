@@ -67,7 +67,8 @@ def main():
     model.eps = config['cn_eps']
     # ConstraintNet overrides nn.Module.train() with its training algorithm.
     model.network.eval()
-    low, high = np.asarray(task['workspace_low']), np.asarray(task['workspace_high'])
+    low = np.asarray(task.get('plot_workspace_low', task['workspace_low']))
+    high = np.asarray(task.get('plot_workspace_high', task['workspace_high']))
     if args.z_max is not None:
         if args.z_max <= low[2]:
             parser.error('z-max must exceed the workspace lower z bound')

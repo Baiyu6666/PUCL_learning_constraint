@@ -1,0 +1,454 @@
+{
+  "schema_version": 1,
+  "dataset_name": "KukaCup3",
+  "environment_name": "KukaCup1",
+  "data_role": "expert_demonstrations",
+  "source_session": "20261016T094141_129931Z_demo_friday",
+  "source_directory": "/home/baiyu/PycharmProjects/constraint_learning_robot_interface/data/tasks/obsavoid/demos/iiwa7_obsavoid/20261016T094141_129931Z_demo_friday",
+  "selected_demo_ids": [
+    "demo_00",
+    "demo_01",
+    "demo_02_b",
+    "demo_02_d",
+    "demo_06_a",
+    "demo_06_c",
+    "demo_06_e",
+    "demo_06_g",
+    "demo_06_h",
+    "demo_08",
+    "demo_09",
+    "demo_10",
+    "demo_12",
+    "demo_14",
+    "demo_17",
+    "demo_18",
+    "demo_20",
+    "demo_21",
+    "demo_23_b",
+    "demo_23_d",
+    "demo_24",
+    "demo_27_a",
+    "demo_27_c",
+    "demo_28",
+    "demo_29"
+  ],
+  "num_demonstrations": 25,
+  "total_samples": 19561,
+  "total_training_observations": 2475,
+  "conversion_status": "pucl_rollouts_ready",
+  "demonstrations": [
+    {
+      "demo_id": "demo_00",
+      "rollout_file": "files/EXPERT/rollouts/0.pkl",
+      "rollout_sha256": "a5dd86fe3d36ae6907fea0a82619c361c230219678b1d9cf5b6d0e0432ab32b5",
+      "num_transitions": 99,
+      "num_positions": 100,
+      "label_source": "User-provided feasible/failed recording session; trajectory-level label only",
+      "num_samples": 890,
+      "file": "raw/analysis/segments/demo_00.npz",
+      "sha256": "bc2f74a9008c32eb46a7d468b3d85d402ea3754abfcf7399fc81003ac4e383e7"
+    },
+    {
+      "demo_id": "demo_01",
+      "rollout_file": "files/EXPERT/rollouts/1.pkl",
+      "rollout_sha256": "5307ac3ef49a728dfc675e9bc23407f01ca840c8e8724c2cf48b720b7b4c8db0",
+      "num_transitions": 99,
+      "num_positions": 100,
+      "label_source": "User-provided feasible/failed recording session; trajectory-level label only",
+      "num_samples": 658,
+      "file": "raw/analysis/segments/demo_01.npz",
+      "sha256": "aa61dee25d72d10f95902565bd1421b1df71542a8fd31c5383f0e0a254855ab2"
+    },
+    {
+      "demo_id": "demo_02_b",
+      "rollout_file": "files/EXPERT/rollouts/2.pkl",
+      "rollout_sha256": "48ed2e31afb126a87065b643b29056b9de7ed574e473ebe2f72e0209d5953ed4",
+      "num_transitions": 99,
+      "num_positions": 100,
+      "label_source": "User-provided feasible/failed recording session; trajectory-level label only",
+      "num_samples": 799,
+      "file": "raw/analysis/segments/demo_02_b.npz",
+      "sha256": "3eae5224bc60acb7109f09a15f2f3e1cccb2ce0329ce9565b22a941bc5e9a5ed"
+    },
+    {
+      "demo_id": "demo_02_d",
+      "rollout_file": "files/EXPERT/rollouts/3.pkl",
+      "rollout_sha256": "9828951007c723e0953c369eb5334ffc4d34c17c2ad7fdb734303f21ba75064c",
+      "num_transitions": 99,
+      "num_positions": 100,
+      "label_source": "User-provided feasible/failed recording session; trajectory-level label only",
+      "num_samples": 646,
+      "file": "raw/analysis/segments/demo_02_d.npz",
+      "sha256": "c1efebd9641b5c17374ea4bebc69565f30b2dcb69ef39e9935db37ee333922cf"
+    },
+    {
+      "demo_id": "demo_06_a",
+      "rollout_file": "files/EXPERT/rollouts/4.pkl",
+      "rollout_sha256": "4c6ed9a9552fe5d32456f97d0a802cced89a9099d3ce0439fd1919af6d769c88",
+      "num_transitions": 99,
+      "num_positions": 100,
+      "label_source": "User-provided feasible/failed recording session; trajectory-level label only",
+      "num_samples": 938,
+      "file": "raw/analysis/segments/demo_06_a.npz",
+      "sha256": "6f5b4aba333dc448db1bc6b8b102b27fbb665c44e07be981a8cc174731c9fe69"
+    },
+    {
+      "demo_id": "demo_06_c",
+      "rollout_file": "files/EXPERT/rollouts/5.pkl",
+      "rollout_sha256": "e100a5d74b79a22e825c7251a9d9eafb85bcaaf3786c69f9043b45736889f3cd",
+      "num_transitions": 99,
+      "num_positions": 100,
+      "label_source": "User-provided feasible/failed recording session; trajectory-level label only",
+      "num_samples": 948,
+      "file": "raw/analysis/segments/demo_06_c.npz",
+      "sha256": "e7cbe5a4bad843b5d87fb2cf5723cb0e90aaf3260637389d182a74e4a3a60fa6"
+    },
+    {
+      "demo_id": "demo_06_e",
+      "rollout_file": "files/EXPERT/rollouts/6.pkl",
+      "rollout_sha256": "05183b585605a5da984c8bc335ec01e5592da1a13e460022c81f753f51e63d98",
+      "num_transitions": 99,
+      "num_positions": 100,
+      "label_source": "User-provided feasible/failed recording session; trajectory-level label only",
+      "num_samples": 802,
+      "file": "raw/analysis/segments/demo_06_e.npz",
+      "sha256": "6639ccb90a0e6bb7715852936cb021cd86697868e93f504f8ca1584816a97e7d"
+    },
+    {
+      "demo_id": "demo_06_g",
+      "rollout_file": "files/EXPERT/rollouts/7.pkl",
+      "rollout_sha256": "f6564024f5c77ec8d96d2892e859861f181ce2bbb49379ea58b8a55df73b6a44",
+      "num_transitions": 99,
+      "num_positions": 100,
+      "label_source": "User-provided feasible/failed recording session; trajectory-level label only",
+      "num_samples": 963,
+      "file": "raw/analysis/segments/demo_06_g.npz",
+      "sha256": "1afff9a3b7bc7d9571f251678b61ef9902959dc229617c30691efb2f42765824"
+    },
+    {
+      "demo_id": "demo_06_h",
+      "rollout_file": "files/EXPERT/rollouts/8.pkl",
+      "rollout_sha256": "36e9f8fe646b7c38ce8a0e311ca278feb82cff271ef789f4800431e62eba8e91",
+      "num_transitions": 99,
+      "num_positions": 100,
+      "label_source": "User-provided feasible/failed recording session; trajectory-level label only",
+      "num_samples": 1095,
+      "file": "raw/analysis/segments/demo_06_h.npz",
+      "sha256": "100f0816698f255acdc7fb2b79205efd521cff2c1938b867660aed93b6a9d7ca"
+    },
+    {
+      "demo_id": "demo_08",
+      "rollout_file": "files/EXPERT/rollouts/9.pkl",
+      "rollout_sha256": "10606bf061abe115c7958c7b9ef861878a487f0e3d7519684154f988523e919d",
+      "num_transitions": 99,
+      "num_positions": 100,
+      "label_source": "User-provided feasible/failed recording session; trajectory-level label only",
+      "num_samples": 858,
+      "file": "raw/analysis/segments/demo_08.npz",
+      "sha256": "0d8e87d5b7ca9979ba52d9e538f0af933c31142e9698c541b43c5b9c195f662f"
+    },
+    {
+      "demo_id": "demo_09",
+      "rollout_file": "files/EXPERT/rollouts/10.pkl",
+      "rollout_sha256": "e20c59d03e2bafc2932cc0e3b6c05aa4947e4c7aae79bbb3c6fc7860efbf1e14",
+      "num_transitions": 99,
+      "num_positions": 100,
+      "label_source": "User-provided feasible/failed recording session; trajectory-level label only",
+      "num_samples": 677,
+      "file": "raw/analysis/segments/demo_09.npz",
+      "sha256": "13cc6011bec1338f2b86df82510362bd9f72d4465db974164dbf6ee4ec4f1007"
+    },
+    {
+      "demo_id": "demo_10",
+      "rollout_file": "files/EXPERT/rollouts/11.pkl",
+      "rollout_sha256": "fb674e9dbfe46ca61d72eb6f17af052ff29936fc7ba7bc474935d6cb5794c6e4",
+      "num_transitions": 99,
+      "num_positions": 100,
+      "label_source": "User-provided feasible/failed recording session; trajectory-level label only",
+      "num_samples": 963,
+      "file": "raw/analysis/segments/demo_10.npz",
+      "sha256": "acd1eb3d91f4ebe4064fdccbe640010b074c6a047a4eb1448561b06394016823"
+    },
+    {
+      "demo_id": "demo_12",
+      "rollout_file": "files/EXPERT/rollouts/12.pkl",
+      "rollout_sha256": "88e3bfe353d660f515c474b4333bc64c8321d7fee548ff3cee6edf2579ad0556",
+      "num_transitions": 99,
+      "num_positions": 100,
+      "label_source": "User-provided feasible/failed recording session; trajectory-level label only",
+      "num_samples": 529,
+      "file": "raw/analysis/segments/demo_12.npz",
+      "sha256": "7e6f1b97daba70ef56ab5ff223dd1ea90eee45584dcc801d329ff9e69a4426cd"
+    },
+    {
+      "demo_id": "demo_14",
+      "rollout_file": "files/EXPERT/rollouts/13.pkl",
+      "rollout_sha256": "17f0963403cd1e3e13298ad5d4325c6121a9de10a1b4e0be4033bbe127e7eda5",
+      "num_transitions": 99,
+      "num_positions": 100,
+      "label_source": "User-provided feasible/failed recording session; trajectory-level label only",
+      "num_samples": 791,
+      "file": "raw/analysis/segments/demo_14.npz",
+      "sha256": "8ed9debb11492cd37a96b99c6a153c64c8a498398cc44879a7e1e711a9165ddd"
+    },
+    {
+      "demo_id": "demo_17",
+      "rollout_file": "files/EXPERT/rollouts/14.pkl",
+      "rollout_sha256": "d7407633bec77663c5710114fa6a92df550ad4d20a4e5872c15582ac7784360b",
+      "num_transitions": 99,
+      "num_positions": 100,
+      "label_source": "User-provided feasible/failed recording session; trajectory-level label only",
+      "num_samples": 472,
+      "file": "raw/analysis/segments/demo_17.npz",
+      "sha256": "596a400d85815528f9051fb30b6ddb9a54c875df9dcdabbcacc01805326a8e3d"
+    },
+    {
+      "demo_id": "demo_18",
+      "rollout_file": "files/EXPERT/rollouts/15.pkl",
+      "rollout_sha256": "d30b50c066fb06aeb7f18e105b754a3b1e2fb218b707d98a06b947c7206b3a4f",
+      "num_transitions": 99,
+      "num_positions": 100,
+      "label_source": "User-provided feasible/failed recording session; trajectory-level label only",
+      "num_samples": 732,
+      "file": "raw/analysis/segments/demo_18.npz",
+      "sha256": "4a0c3ccd82b5b72b13832ae46fe9c1fd50f178748d0726688931d7c9c932ff4c"
+    },
+    {
+      "demo_id": "demo_20",
+      "rollout_file": "files/EXPERT/rollouts/16.pkl",
+      "rollout_sha256": "702d1236ee3731c44744754bf46a5b4de7a63fa5d793338cc59cc1d202a01e84",
+      "num_transitions": 99,
+      "num_positions": 100,
+      "label_source": "User-provided feasible/failed recording session; trajectory-level label only",
+      "num_samples": 578,
+      "file": "raw/analysis/segments/demo_20.npz",
+      "sha256": "239ef5c9089c48ab83da2c8ac8743b8d9b7adb1999d1cbafbb77cf7d8242caba"
+    },
+    {
+      "demo_id": "demo_21",
+      "rollout_file": "files/EXPERT/rollouts/17.pkl",
+      "rollout_sha256": "e3e816ff05394d1fd02f7c764a69e98c09af9b5379e011da0e51c425c9c9e538",
+      "num_transitions": 99,
+      "num_positions": 100,
+      "label_source": "User-provided feasible/failed recording session; trajectory-level label only",
+      "num_samples": 522,
+      "file": "raw/analysis/segments/demo_21.npz",
+      "sha256": "2b94eccc5f3a4e02a61046cc3cd4bcad2cf74d8a2a3174b12750c85f12873037"
+    },
+    {
+      "demo_id": "demo_23_b",
+      "rollout_file": "files/EXPERT/rollouts/18.pkl",
+      "rollout_sha256": "5f3ffb4e4ceaeb6a034a25e44313ef7a1165007616c657a4e9cf2d30bcd75f12",
+      "num_transitions": 99,
+      "num_positions": 100,
+      "label_source": "User-provided feasible/failed recording session; trajectory-level label only",
+      "num_samples": 638,
+      "file": "raw/analysis/segments/demo_23_b.npz",
+      "sha256": "1bed3e60f9931229a4265b22a87146b4d7244a4e511b2c2d319a79c9d49ee52e"
+    },
+    {
+      "demo_id": "demo_23_d",
+      "rollout_file": "files/EXPERT/rollouts/19.pkl",
+      "rollout_sha256": "a443cb16759294712823286824761dee29cbff810f6195374eae13847cc2df44",
+      "num_transitions": 99,
+      "num_positions": 100,
+      "label_source": "User-provided feasible/failed recording session; trajectory-level label only",
+      "num_samples": 931,
+      "file": "raw/analysis/segments/demo_23_d.npz",
+      "sha256": "6521a262feced7640d6a06e3aaadf92f15770b6edde2f3ae483bbc8708964077"
+    },
+    {
+      "demo_id": "demo_24",
+      "rollout_file": "files/EXPERT/rollouts/20.pkl",
+      "rollout_sha256": "7dc384e2173866b2c0cf1a71aca04e18d992a6730d8c21e6a37978025171f013",
+      "num_transitions": 99,
+      "num_positions": 100,
+      "label_source": "User-provided feasible/failed recording session; trajectory-level label only",
+      "num_samples": 954,
+      "file": "raw/analysis/segments/demo_24.npz",
+      "sha256": "730fc5a224e6e951078f530d36e389016045a7abe70ae6901d4e1cbc7d7fed1c"
+    },
+    {
+      "demo_id": "demo_27_a",
+      "rollout_file": "files/EXPERT/rollouts/21.pkl",
+      "rollout_sha256": "3f87c901f3717b69bcd5f56bd1dfd7c7c2d2bf8c9a87c30cda7bab40bf167073",
+      "num_transitions": 99,
+      "num_positions": 100,
+      "label_source": "User-provided feasible/failed recording session; trajectory-level label only",
+      "num_samples": 1011,
+      "file": "raw/analysis/segments/demo_27_a.npz",
+      "sha256": "a612232d64d60a6248e504dc9de2c3d153d360bf6730a619ecd9df7c707805c5"
+    },
+    {
+      "demo_id": "demo_27_c",
+      "rollout_file": "files/EXPERT/rollouts/22.pkl",
+      "rollout_sha256": "6e467c7e92fc3326437c0a32d3424e8ea1be2e6155101637c7a40f094ecf0d89",
+      "num_transitions": 99,
+      "num_positions": 100,
+      "label_source": "User-provided feasible/failed recording session; trajectory-level label only",
+      "num_samples": 934,
+      "file": "raw/analysis/segments/demo_27_c.npz",
+      "sha256": "5eba5764f58b81302d50769ee5d13b070f3c3541126228883519ebfb6b0439bd"
+    },
+    {
+      "demo_id": "demo_28",
+      "rollout_file": "files/EXPERT/rollouts/23.pkl",
+      "rollout_sha256": "c19c05d961383c8e6d275b571e5d090bb5acc6ab67c968fb4dfd2624477a9910",
+      "num_transitions": 99,
+      "num_positions": 100,
+      "label_source": "User-provided feasible/failed recording session; trajectory-level label only",
+      "num_samples": 804,
+      "file": "raw/analysis/segments/demo_28.npz",
+      "sha256": "a9710c7688bcc7ca5c0dc7ac92d987ba3aefa3f61aedc8af080a9ccf52147dd5"
+    },
+    {
+      "demo_id": "demo_29",
+      "rollout_file": "files/EXPERT/rollouts/24.pkl",
+      "rollout_sha256": "66c0f061fd4fcdb189fc2477d15afdefdfca3a6f22ca35587b53772978d853e9",
+      "num_transitions": 99,
+      "num_positions": 100,
+      "label_source": "User-provided feasible/failed recording session; trajectory-level label only",
+      "num_samples": 428,
+      "file": "raw/analysis/segments/demo_29.npz",
+      "sha256": "db554f2f766f49e2422ceaf57a423e8ad488515ff5412473972da7c6a048bc12"
+    }
+  ],
+  "downsampling": {
+    "method": "uniform_arc_length",
+    "num_positions_per_demo": 100
+  },
+  "notes": [
+    "raw/ preserves the original session, including its historical 15-rollout export.",
+    "Current EXPERT and FAILED pickle files define the curated dataset roles.",
+    "Metadata refresh validates rollouts but never rewrites, resamples or relabels them.",
+    "Each expert raw segment is checked against the current rollout start and goal.",
+    "FAILED recording-session provenance is unspecified; labels are trajectory-level only.",
+    "True geometry is unavailable; safety and constraint accuracy are not evaluated."
+  ],
+  "num_failed_demonstrations": 15,
+  "failed_demonstrations": [
+    {
+      "demo_id": "demo_01",
+      "rollout_file": "files/FAILED/rollouts/0.pkl",
+      "rollout_sha256": "5490152509d10a499b6130914702fc495152f1ed83dbc43d14f3579c73df1d15",
+      "num_transitions": 99,
+      "num_positions": 100,
+      "label_source": "User-provided feasible/failed recording session; trajectory-level label only"
+    },
+    {
+      "demo_id": "demo_03",
+      "rollout_file": "files/FAILED/rollouts/1.pkl",
+      "rollout_sha256": "2b8f42d189b8a1b00a04ba57c1516a63fc3bf5c759ab426c6d8d9b531f3b2520",
+      "num_transitions": 99,
+      "num_positions": 100,
+      "label_source": "User-provided feasible/failed recording session; trajectory-level label only"
+    },
+    {
+      "demo_id": "demo_04",
+      "rollout_file": "files/FAILED/rollouts/2.pkl",
+      "rollout_sha256": "8d1a84dd9217d5de1db2d16be6b95b658c44016621a4e130a32f34583bf2c783",
+      "num_transitions": 99,
+      "num_positions": 100,
+      "label_source": "User-provided feasible/failed recording session; trajectory-level label only"
+    },
+    {
+      "demo_id": "demo_05",
+      "rollout_file": "files/FAILED/rollouts/3.pkl",
+      "rollout_sha256": "6c53bd5466f8f7563d37cba2bda091a619fa64f9b7c82a1fbc6d88a841b46533",
+      "num_transitions": 99,
+      "num_positions": 100,
+      "label_source": "User-provided feasible/failed recording session; trajectory-level label only"
+    },
+    {
+      "demo_id": "demo_07",
+      "rollout_file": "files/FAILED/rollouts/4.pkl",
+      "rollout_sha256": "049b89dc09d035c362f763ea7f5067a0f65c1209a41743061465ad57ded1acb9",
+      "num_transitions": 99,
+      "num_positions": 100,
+      "label_source": "User-provided feasible/failed recording session; trajectory-level label only"
+    },
+    {
+      "demo_id": "demo_08",
+      "rollout_file": "files/FAILED/rollouts/5.pkl",
+      "rollout_sha256": "9fb4d17a566ce980ed92eb9ea87cd0f3c97e0b34e3784a5325699c1250a21f6c",
+      "num_transitions": 99,
+      "num_positions": 100,
+      "label_source": "User-provided feasible/failed recording session; trajectory-level label only"
+    },
+    {
+      "demo_id": "demo_09",
+      "rollout_file": "files/FAILED/rollouts/6.pkl",
+      "rollout_sha256": "41ac9b1e8826b76ffe4c9085d50373c08eb8e9f25dffcc5375fb272e2cb16dfd",
+      "num_transitions": 99,
+      "num_positions": 100,
+      "label_source": "User-provided feasible/failed recording session; trajectory-level label only"
+    },
+    {
+      "demo_id": "demo_11",
+      "rollout_file": "files/FAILED/rollouts/7.pkl",
+      "rollout_sha256": "0402e092598ba97a84fd86542356276d5aa9db1ed2beae1f7dfe978707bef669",
+      "num_transitions": 99,
+      "num_positions": 100,
+      "label_source": "User-provided feasible/failed recording session; trajectory-level label only"
+    },
+    {
+      "demo_id": "demo_12",
+      "rollout_file": "files/FAILED/rollouts/8.pkl",
+      "rollout_sha256": "1b7a88904f3754aa58f4ca91bd865b29f0811f00ad7e651237d465bbdf9db2b1",
+      "num_transitions": 99,
+      "num_positions": 100,
+      "label_source": "User-provided feasible/failed recording session; trajectory-level label only"
+    },
+    {
+      "demo_id": "demo_13",
+      "rollout_file": "files/FAILED/rollouts/9.pkl",
+      "rollout_sha256": "ac15b79f58808070bee7032baff7aff39238b1c1d96914106d93a2ffb013318a",
+      "num_transitions": 99,
+      "num_positions": 100,
+      "label_source": "User-provided feasible/failed recording session; trajectory-level label only"
+    },
+    {
+      "demo_id": "demo_15",
+      "rollout_file": "files/FAILED/rollouts/10.pkl",
+      "rollout_sha256": "624502d834e044528e3254cc0f851444211da59b23a8502b910523e69275bd49",
+      "num_transitions": 99,
+      "num_positions": 100,
+      "label_source": "User-provided feasible/failed recording session; trajectory-level label only"
+    },
+    {
+      "demo_id": "demo_17",
+      "rollout_file": "files/FAILED/rollouts/11.pkl",
+      "rollout_sha256": "e7c16d28152110ce8739ae6365ed4d5857085415fec4d8641e2e9763ba23df88",
+      "num_transitions": 99,
+      "num_positions": 100,
+      "label_source": "User-provided feasible/failed recording session; trajectory-level label only"
+    },
+    {
+      "demo_id": "demo_18",
+      "rollout_file": "files/FAILED/rollouts/12.pkl",
+      "rollout_sha256": "073e56b12ce1b537eadef4ae5eb7a78f88c02b09cc80cce0656ff53cd95c3163",
+      "num_transitions": 99,
+      "num_positions": 100,
+      "label_source": "User-provided feasible/failed recording session; trajectory-level label only"
+    },
+    {
+      "demo_id": "demo_19",
+      "rollout_file": "files/FAILED/rollouts/13.pkl",
+      "rollout_sha256": "a59ac8d25f73e765d0d0af2cc37103aa9a60af692600b904f2395fb65df9b8e7",
+      "num_transitions": 99,
+      "num_positions": 100,
+      "label_source": "User-provided feasible/failed recording session; trajectory-level label only"
+    },
+    {
+      "demo_id": "demo_20",
+      "rollout_file": "files/FAILED/rollouts/14.pkl",
+      "rollout_sha256": "e19c9863169678c22960593f2aedd2e8eabfa39c328736875cbb43f0ededa6c7",
+      "num_transitions": 99,
+      "num_positions": 100,
+      "label_source": "User-provided feasible/failed recording session; trajectory-level label only"
+    }
+  ],
+  "total_failed_observations": 1485,
+  "selection_source": "Current files/EXPERT/rollouts; curated selection supersedes archived export mapping.",
+  "failed_source_session": null
+}

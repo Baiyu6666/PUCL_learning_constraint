@@ -57,7 +57,74 @@ for each run: `config.json`, `metrics.jsonl`,
 per-iteration evaluation records, and `models/icrl_*_itrs/cn.pt` checkpoints.
 To rebuild the expert rollouts, run `python icrl/tests/prepare_kuka_cup1_data.py`.
 
-### 2D reach with position constraint 
+To save a single pass of initial, unmodulated nominal trajectories whose episode
+returns exceed their corresponding expert returns, run
+`python icrl/tests/generate_kuka_cup1_failed_data.py`. This performs no constraint
+updates and saves rollouts to `icrl/expert_data/KukaCup1/files/FAILED/rollouts/`,
+with a generation summary in `files/FAILED/summary.json`.
+
+### KukaCup3: Friday demonstrations, shared KukaCup1 environment
+
+`icrl/expert_data/KukaCup3/raw/` preserves the complete
+`20261016T094141_129931Z_demo_friday` session. The current curated dataset has
+**25 EXPERT rollouts**, each with 100 positions and 99 transitions (2,475 training
+observations), plus **15 FAILED rollouts** with trajectory-level labels.
+Training reads `files/EXPERT/rollouts`; the archived `raw/analysis/pucl_rollouts/`
+contains a historical 15-rollout export. Both the original export and the
+25-entry `selected_demos.txt` remain unchanged as provenance. The current
+training pickles use a NumPy 1 compatible format. FAILED recording-session
+provenance is not specified in the current bundle.
+
+Run from the repository root:
+
+```bash
+OMP_NUM_THREADS=1 MKL_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 \
+python run_me.py dscl -g KukaCup3 -n KukaCup3 \
+  -tei KukaCup1-v0 -eei KukaCup1-v0 \
+  --task_config_path icrl/expert_data/KukaCup3/task_config.json \
+  -ep icrl/expert_data/KukaCup3 -er 25 -cosd 0 1 2 -casd -1 \
+  -dno -dnr -dnc -rg 1 -cl 32 32 -clr 0.005 \
+  -ni 10 -bi 300 -cbs 256 -een 25 -cpe 1 \
+  -twm -kNNt 0.03 -spe --cn_smoothness_coeff 0.01
+```
+
+Both environments use `KukaCup1-v0`, with KukaCup3's own `task_config.json`
+passed to training, sampling, evaluation and plotting. This command uses
+10 updates, 300 epochs per update, SPE and smoothness 0.01. It uses ordinary DS
+modulation because no reference point has been established for this setup.
+For a quick check, change `-ni 10 -bi 300` to `-ni 1 -bi 1`.
+
+KukaCup3 temporarily uses broad simulation bounds of **[-10, 10] m on each axis**.
+These are not measured robot limits. With actions bounded by 1, a step size of
+0.008 m and at most 200 steps, each coordinate can move at most 1.6 m from its
+start; the current demonstration starts cannot reach these bounds during an
+episode. This prevents workspace clipping from altering training rollouts.
+The independent `plot_workspace_low` / `plot_workspace_high` settings select
+the constraint plotting region only, currently `[0.34, -0.52, 0.24]` to
+`[0.74, 0.06, 0.64]` m. They do not constrain motion or training samples.
+
+The session snapshot has no true constraint or scene geometry. KukaCup3 therefore
+sets `true_constraint_available: false`; goal-reaching, path length and returns
+are evaluated, while safety fields are `null` and constraint accuracy is omitted.
+To evaluate a measured cylinder later, set this flag to `true` and fill in
+`obstacle_center` and `obstacle_radius` in KukaCup3's task configuration.
+
+To update the manifest and task list after changing the curated pickle selection,
+without rewriting or resampling the trajectories:
+
+```bash
+python icrl/tests/prepare_kuka_cup3_data.py --refresh-metadata
+```
+
+To import the original session's archived export into a fresh destination
+(its 15-rollout subset, rather than the current curated 25-rollout selection):
+
+```bash
+python icrl/tests/prepare_kuka_cup3_data.py /path/to/20261016T094141_129931Z_demo_friday \
+  --destination /path/to/new/KukaCup3
+```
+
+### 2D reach with position constraint
 ```bash
 # PUCL
 python run_me.py pucl -g test -tei PointEllip-v0 -eei PointEllipTest-v0 -ep icrl/expert_data/PointEllip -nis -lr 3e-4 -piv 10 -ft 3e4 -ni 40 -clr 0.003 -ec 0.01 -kp 1 -ki 0.1 -upid -lpd run-20240523_190205-8z00tfj3 -lpi 15 -lp -dnr -dnc -dno -spe -um -cl 32 32 -ee 3 -kNNt 0.12

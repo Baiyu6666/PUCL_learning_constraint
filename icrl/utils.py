@@ -283,9 +283,9 @@ def get_name(parser, default_config, actual_config, mod_name):
 # Gym utilities
 # =============================================================================
 
-def make_env(env_id, rank, log_dir, seed=0):
+def make_env(env_id, rank, log_dir, seed=0, env_kwargs=None):
     def _init():
-        env = gym.make(env_id)
+        env = gym.make(env_id, **(env_kwargs or {}))
         env.seed(seed + rank)
         if 'ReachVel' in env_id:
             env = Monitor(env, log_dir, info_keywords=('is_success',), track_keywords=('cost', 'dis_reward', 'ctl_reward', 'action_norm_inf'))
@@ -301,8 +301,8 @@ def make_env(env_id, rank, log_dir, seed=0):
 
 def make_train_env(env_id, save_dir, use_cost_wrapper, base_seed=0, num_threads=1,
                    normalize_obs=True, normalize_reward=True, normalize_cost=True,
-                   **kwargs):
-    env = [make_env(env_id, i, save_dir, base_seed)
+                   env_kwargs=None, **kwargs):
+    env = [make_env(env_id, i, save_dir, base_seed, env_kwargs)
            for i in range(num_threads)]
     env = vec_env.SubprocVecEnv(env)
     if use_cost_wrapper:
@@ -324,8 +324,8 @@ def make_train_env(env_id, save_dir, use_cost_wrapper, base_seed=0, num_threads=
                 norm_cost=normalize_cost)
     return env
 
-def make_eval_env(env_id, use_cost_wrapper, normalize_obs=True):
-    env = [lambda: gym.make(env_id)]
+def make_eval_env(env_id, use_cost_wrapper, normalize_obs=True, env_kwargs=None):
+    env = [lambda: gym.make(env_id, **(env_kwargs or {}))]
     env = vec_env.SubprocVecEnv(env)
     if use_cost_wrapper:
         env = vec_env.VecCostWrapper(env)
@@ -570,7 +570,7 @@ def sample_from_same_starting_points_as_demonstrations(agent, env, expert_obs, e
     return orig_observations, observations, actions, rewards, lengths
 
 
-def sample_true_labeled_data(cost_function, env_id):
+def sample_true_labeled_data(cost_function, env_id, env_kwargs=None):
     # This function is only for ReachConcave env or Reach2regions env, it generates true labeled data from true env.
     if 'Reach' not in env_id and env_id != 'KukaCup1-v0':
         raise NotImplementedError('Warning! This function is only for Reach env')
@@ -578,7 +578,7 @@ def sample_true_labeled_data(cost_function, env_id):
     acs_dim = 3
     # for concave env
     if env_id == 'KukaCup1-v0':
-        env = gym.make(env_id)
+        env = gym.make(env_id, **(env_kwargs or {}))
         try:
             x_lim, y_lim, z_lim = zip(env.workspace_low, env.workspace_high)
         finally:

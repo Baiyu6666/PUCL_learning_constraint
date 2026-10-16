@@ -1,0 +1,60 @@
+{
+  "bag_file": "demo.bag",
+  "config_snapshot": {
+    "path": "config_snapshot.json",
+    "sha256": "e2112a501a6487257d0b5c9575dfef3c42ce829e3eb0aa43fdf20d5c39d53bc0"
+  },
+  "experiment": "stage_constraint",
+  "finished_at_utc": "2026-10-16T09:46:54.776948+00:00",
+  "label": "demo_friday",
+  "operator_notes": "",
+  "optional_topics": [
+    "/tf_static",
+    "/iiwa7/additional_outputs",
+    "/iiwa7/fri_diagnostics",
+    "/iiwa7/commanding_status",
+    "/iiwa7/SafeTorqueController/command",
+    "/stage_cons/plan"
+  ],
+  "recorded_topics": [
+    "/iiwa7/joint_states",
+    "/tf",
+    "/tf_static",
+    "/iiwa7/additional_outputs",
+    "/iiwa7/fri_diagnostics",
+    "/iiwa7/commanding_status",
+    "/iiwa7/SafeTorqueController/command",
+    "/stage_cons/plan",
+    "/stage_cons/demo_marker"
+  ],
+  "recording_state": "completed",
+  "required_topics": [
+    "/iiwa7/joint_states",
+    "/tf"
+  ],
+  "robot_id": "iiwa7",
+  "robot_model": 7,
+  "robot_namespace": "iiwa7",
+  "rosbag_pid": 231830,
+  "rosbag_return_code": 0,
+  "runtime_fingerprint": "cae7c97f7f30d24eb051c121ba32589de47635e882b96058ce1b3ff6b68bad85",
+  "schema_version": 1,
+  "session_id": "20261016T094141_129931Z_demo_friday",
+  "setup_profile": "iiwa7_obsavoid",
+  "started_at_utc": "2026-10-16T09:41:41.129931+00:00",
+  "task_id": "obsavoid",
+  "topic_types_at_start": {
+    "/iiwa7/SafeTorqueController/command": null,
+    "/iiwa7/additional_outputs": "iiwa_driver/AdditionalOutputs",
+    "/iiwa7/commanding_status": "std_msgs/Bool",
+    "/iiwa7/fri_diagnostics": "iiwa_driver/FriDiagnostics",
+    "/iiwa7/joint_states": "sensor_msgs/JointState",
+    "/stage_cons/demo_marker": "std_msgs/String",
+    "/stage_cons/plan": null,
+    "/tf": "tf2_msgs/TFMessage",
+    "/tf_static": "tf2_msgs/TFMessage"
+  },
+  "video_error": null,
+  "video_file": null,
+  "video_requested": false
+}

@@ -1,0 +1,133 @@
+{
+  "environment": "KukaCup1-v0",
+  "sampling_passes": 1,
+  "constraint_updates": 0,
+  "nominal_ds": "2 * (goal - position), with DS_Policy velocity normalization",
+  "selection": "nominal episode return > corresponding expert episode return",
+  "failed_label": "Trajectory-level higher-return nominal demonstration; not a per-state infeasibility label.",
+  "candidate_trajectories": 10,
+  "saved_trajectories": 10,
+  "total_transitions": 853,
+  "trajectories": [
+    {
+      "source_expert_file": "0.pkl",
+      "source_demo": "demo_04",
+      "expert_return": -0.4675218717071738,
+      "nominal_return": -0.37634821328281903,
+      "return_improvement": 0.09117365842435476,
+      "steps": 84,
+      "goal_reached": true,
+      "path_length": 0.37634821328281903,
+      "saved": true,
+      "rollout_file": "0.pkl"
+    },
+    {
+      "source_expert_file": "1.pkl",
+      "source_demo": "demo_09",
+      "expert_return": -0.48952622292117837,
+      "nominal_return": -0.3604067426470431,
+      "return_improvement": 0.12911948027413528,
+      "steps": 82,
+      "goal_reached": true,
+      "path_length": 0.36040674264704303,
+      "saved": true,
+      "rollout_file": "1.pkl"
+    },
+    {
+      "source_expert_file": "2.pkl",
+      "source_demo": "demo_10",
+      "expert_return": -0.43784477512994113,
+      "nominal_return": -0.34695021534450177,
+      "return_improvement": 0.09089455978543937,
+      "steps": 88,
+      "goal_reached": true,
+      "path_length": 0.3469502153445019,
+      "saved": true,
+      "rollout_file": "2.pkl"
+    },
+    {
+      "source_expert_file": "3.pkl",
+      "source_demo": "demo_19",
+      "expert_return": -0.5246703023803065,
+      "nominal_return": -0.40045064579071415,
+      "return_improvement": 0.12421965658959239,
+      "steps": 87,
+      "goal_reached": true,
+      "path_length": 0.40045064579071393,
+      "saved": true,
+      "rollout_file": "3.pkl"
+    },
+    {
+      "source_expert_file": "4.pkl",
+      "source_demo": "demo_20",
+      "expert_return": -0.5149487601993817,
+      "nominal_return": -0.4160606698368029,
+      "return_improvement": 0.09888809036257884,
+      "steps": 88,
+      "goal_reached": true,
+      "path_length": 0.41606066983680284,
+      "saved": true,
+      "rollout_file": "4.pkl"
+    },
+    {
+      "source_expert_file": "5.pkl",
+      "source_demo": "demo_23",
+      "expert_return": -0.5468407138615601,
+      "nominal_return": -0.3813567932050851,
+      "return_improvement": 0.165483920656475,
+      "steps": 99,
+      "goal_reached": true,
+      "path_length": 0.3813567932050851,
+      "saved": true,
+      "rollout_file": "5.pkl"
+    },
+    {
+      "source_expert_file": "6.pkl",
+      "source_demo": "demo_24",
+      "expert_return": -0.4751462088126634,
+      "nominal_return": -0.3486913455019292,
+      "return_improvement": 0.1264548633107342,
+      "steps": 93,
+      "goal_reached": true,
+      "path_length": 0.34869134550192926,
+      "saved": true,
+      "rollout_file": "6.pkl"
+    },
+    {
+      "source_expert_file": "7.pkl",
+      "source_demo": "demo_25",
+      "expert_return": -0.4214337494679667,
+      "nominal_return": -0.34587677993646726,
+      "return_improvement": 0.07555696953149943,
+      "steps": 85,
+      "goal_reached": true,
+      "path_length": 0.34587677993646737,
+      "saved": true,
+      "rollout_file": "7.pkl"
+    },
+    {
+      "source_expert_file": "8.pkl",
+      "source_demo": "demo_27",
+      "expert_return": -0.4026845651154796,
+      "nominal_return": -0.2792738959417752,
+      "return_improvement": 0.12341066917370441,
+      "steps": 68,
+      "goal_reached": true,
+      "path_length": 0.27927389594177504,
+      "saved": true,
+      "rollout_file": "8.pkl"
+    },
+    {
+      "source_expert_file": "9.pkl",
+      "source_demo": "demo_29",
+      "expert_return": -0.45860398563216737,
+      "nominal_return": -0.27499408729792657,
+      "return_improvement": 0.1836098983342408,
+      "steps": 79,
+      "goal_reached": true,
+      "path_length": 0.2749940872979267,
+      "saved": true,
+      "rollout_file": "9.pkl"
+    }
+  ]
+}

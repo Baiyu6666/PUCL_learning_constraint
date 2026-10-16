@@ -28,17 +28,21 @@ class KukaCup1(gym.Env):
                  step_size=None, goal_tolerance=None, max_steps=None):
         path = Path(config_path or os.environ.get('KUKACUP1_CONFIG') or DEFAULT_CONFIG)
         config = json.loads(path.read_text()) if path.exists() else {}
+        self.true_constraint_available = config.get('true_constraint_available', True)
         self.obstacle_center = np.asarray(
             obstacle_center if obstacle_center is not None else config.get("obstacle_center"),
             dtype=np.float64,
         )
         radius = obstacle_radius if obstacle_radius is not None else config.get("obstacle_radius")
-        if self.obstacle_center.shape != (2,) or not np.isfinite(self.obstacle_center).all() or radius is None:
+        if self.true_constraint_available and (self.obstacle_center.shape != (2,) or
+                not np.isfinite(self.obstacle_center).all() or radius is None):
             raise ValueError("Set KukaCup1 obstacle_center [x, y] and obstacle_radius in "
                              f"{path}, or pass them to gym.make(). Coordinates are metres in iiwa7_link_0.")
-        self.obstacle_radius = float(radius)
-        if not np.isfinite(self.obstacle_radius) or self.obstacle_radius <= 0:
+        self.obstacle_radius = float(radius) if radius is not None else None
+        if self.true_constraint_available and (not np.isfinite(self.obstacle_radius) or self.obstacle_radius <= 0):
             raise ValueError("obstacle_radius must be finite and positive")
+        if not self.true_constraint_available:
+            self.obstacle_center = self.obstacle_radius = None
         self.workspace_low = np.asarray(workspace_low if workspace_low is not None else
                                         config.get("workspace_low", [0.3, -0.4, 0.1]), dtype=np.float64)
         self.workspace_high = np.asarray(workspace_high if workspace_high is not None else
@@ -47,6 +51,13 @@ class KukaCup1(gym.Env):
                 not np.isfinite([self.workspace_low, self.workspace_high]).all() or
                 np.any(self.workspace_high <= self.workspace_low)):
             raise ValueError("workspace bounds must be finite ordered 3-vectors")
+        # Plot bounds do not constrain dynamics or start/goal selection.
+        self.plot_workspace_low = np.asarray(config.get('plot_workspace_low', self.workspace_low), dtype=np.float64)
+        self.plot_workspace_high = np.asarray(config.get('plot_workspace_high', self.workspace_high), dtype=np.float64)
+        if (self.plot_workspace_low.shape != (3,) or self.plot_workspace_high.shape != (3,) or
+                not np.isfinite([self.plot_workspace_low, self.plot_workspace_high]).all() or
+                np.any(self.plot_workspace_high <= self.plot_workspace_low)):
+            raise ValueError('plot workspace bounds must be finite ordered 3-vectors')
         self.step_size = float(step_size if step_size is not None else config.get("step_size", 0.008))
         self.goal_tolerance = float(goal_tolerance if goal_tolerance is not None else
                                     config.get("goal_tolerance", 0.01))
@@ -80,7 +91,7 @@ class KukaCup1(gym.Env):
         self.task_config = {
             "coordinate_frame": config.get("coordinate_frame", "iiwa7_link_0"),
             "units": "metres",
-            "obstacle_center": self.obstacle_center.tolist(),
+            "obstacle_center": self.obstacle_center.tolist() if self.true_constraint_available else None,
             "obstacle_radius": self.obstacle_radius,
             "workspace_low": self.workspace_low.tolist(),
             "workspace_high": self.workspace_high.tolist(),
@@ -89,6 +100,14 @@ class KukaCup1(gym.Env):
             "max_steps": self.max_steps,
             "tasks": [{"start": s.tolist(), "goal": g.tolist()} for s, g in self.default_tasks],
         }
+        if 'true_constraint_available' in config:
+            self.task_config.update(true_constraint_available=self.true_constraint_available,
+                                    geometry_source=config.get('geometry_source'))
+        if 'plot_workspace_low' in config or 'plot_workspace_high' in config:
+            self.task_config.update(plot_workspace_low=self.plot_workspace_low.tolist(),
+                                    plot_workspace_high=self.plot_workspace_high.tolist())
+        if 'workspace_source' in config:
+            self.task_config['workspace_source'] = config['workspace_source']
         self.seed()
 
     def _position(self, value):
@@ -138,7 +157,7 @@ class KukaCup1(gym.Env):
             self.task_config_idx += 1
         self.steps = 0
         self.path_length = 0.0
-        self.cost_counter = int(self.true_cost_function(self.current_state, None))
+        self.cost_counter = int(self.true_cost_function(self.current_state, None)) if self.true_constraint_available else 0
         self.terminated = False
         self.observation = self._observation(np.zeros(3))
         return self.observation.copy()
@@ -160,14 +179,15 @@ class KukaCup1(gym.Env):
         distance = float(np.linalg.norm(displacement))
         self.path_length += distance
         self.steps += 1
-        cost = float(self.true_cost_function(self.current_state, action))
-        self.cost_counter += int(cost)
+        cost = float(self.true_cost_function(self.current_state, action)) if self.true_constraint_available else np.nan
+        if self.true_constraint_available:
+            self.cost_counter += int(cost)
         reached = np.linalg.norm(self.current_state - self.ending_point) <= self.goal_tolerance
         timed_out = self.steps >= self.max_steps and not reached
         self.terminated = bool(reached or timed_out)
         reward = -distance - (self.failure_penalty if timed_out else 0.0)
         self.observation = self._observation(displacement)
-        info = {"cost": cost, "is_success": bool(reached and self.cost_counter == 0),
+        info = {"cost": cost, "is_success": bool(reached and self.cost_counter == 0) if self.true_constraint_available else None,
                 "goal_reached": bool(reached), "path_length": self.path_length,
                 "dis_reward": -distance, "ctl_reward": 0.0,
                 "failure_penalty": self.failure_penalty if timed_out else 0.0}
@@ -176,6 +196,8 @@ class KukaCup1(gym.Env):
         return self.observation.copy(), float(reward), self.terminated, info
 
     def true_cost_function(self, obs, acs=None):
+        if not self.true_constraint_available:
+            raise ValueError('True constraint geometry is unavailable for this dataset')
         positions = np.asarray(obs)[..., :2]
         return (np.sum((positions - self.obstacle_center) ** 2, axis=-1) <=
                 self.obstacle_radius ** 2).astype(np.float32)
@@ -189,12 +211,13 @@ class KukaCup1(gym.Env):
         figure = Figure(figsize=(5, 4), dpi=100)
         canvas = FigureCanvasAgg(figure)
         ax = figure.add_subplot(111)
-        ax.add_patch(Circle(self.obstacle_center, self.obstacle_radius, color="red", alpha=0.4))
+        if self.true_constraint_available:
+            ax.add_patch(Circle(self.obstacle_center, self.obstacle_radius, color="red", alpha=0.4))
         ax.scatter(*self.ending_point[:2], marker="*", color="green", label="goal")
         if self.current_state is not None:
             ax.scatter(*self.current_state[:2], color="blue", label="end effector")
-        ax.set(xlim=(self.workspace_low[0], self.workspace_high[0]),
-               ylim=(self.workspace_low[1], self.workspace_high[1]), xlabel="x (m)", ylabel="y (m)")
+        ax.set(xlim=(self.plot_workspace_low[0], self.plot_workspace_high[0]),
+               ylim=(self.plot_workspace_low[1], self.plot_workspace_high[1]), xlabel="x (m)", ylabel="y (m)")
         ax.set_aspect("equal")
         ax.legend()
         canvas.draw()

@@ -1,5 +1,6 @@
 import argparse
 import copy
+import json
 import os
 import pickle
 import sys
@@ -15,16 +16,16 @@ from icrl.true_constraint_net import get_true_cost_function, null_cost
 from icrl.ds_policy import DS_Policy
 from icrl.goal_reaching_evaluation import evaluate_goal_reaching_policy
 
-def resolve_cn_smoothness_coeff(env_id, coefficient):
+def resolve_cn_smoothness_coeff(env_id, coefficient, method='pucl'):
     """Use the tested Kuka default, while retaining explicit ablation settings."""
     if coefficient is None:
-        return 0.01 if env_id == 'KukaCup1-v0' else 0.0
+        return 0.01 if env_id == 'KukaCup1-v0' and method == 'pucl' else 0.0
     return coefficient
 
 
-def resolve_select_policy_excerpts(env_id, enabled):
+def resolve_select_policy_excerpts(env_id, enabled, method='pucl'):
     if enabled is None:
-        return env_id == 'KukaCup1-v0'
+        return env_id == 'KukaCup1-v0' and method == 'pucl'
     return enabled
 
 
@@ -32,10 +33,17 @@ def dscl(config):
     if config.use_wandb:
         global wandb
         import wandb
+    config.constraint_learning_method = getattr(config, 'constraint_learning_method', 'pucl')
+    if config.constraint_learning_method not in ('pucl', 'mecl'):
+        raise ValueError('Unknown constraint learning method')
     config.cn_smoothness_coeff = resolve_cn_smoothness_coeff(
-        config.train_env_id, getattr(config, 'cn_smoothness_coeff', None))
+        config.train_env_id, getattr(config, 'cn_smoothness_coeff', None), config.constraint_learning_method)
     config.select_policy_excerpts = resolve_select_policy_excerpts(
-        config.train_env_id, getattr(config, 'select_policy_excerpts', None))
+        config.train_env_id, getattr(config, 'select_policy_excerpts', None), config.constraint_learning_method)
+    if config.constraint_learning_method == 'mecl':
+        if config.cn_smoothness_coeff != 0 or config.train_constraint_with_true_data:
+            raise ValueError('MECL baseline uses no PUCL smoothness or true training labels')
+        config.cn_loss_type = 'ml'
     # Initialize DS agent and specify the target point
     if config.train_env_id == 'KukaCup1-v0':
         # Each demonstration stores its own target in obs[3:6] = goal - position.
@@ -73,6 +81,9 @@ def dscl(config):
     # the cost wrapper is only used for custom environments.
     use_cost_wrapper_train = True
     use_cost_wrapper_eval = False
+    env_kwargs = {}
+    if getattr(config, 'task_config_path', None):
+        env_kwargs['config_path'] = os.path.abspath(config.task_config_path)
 
     # creating the vectorized environments
     train_env = utils.make_train_env(env_id=config.train_env_id,
@@ -84,17 +95,18 @@ def dscl(config):
                                      normalize_reward=not config.dont_normalize_reward,
                                      normalize_cost=not config.dont_normalize_cost,
                                      cost_info_str=config.cost_info_str,
+                                     env_kwargs=env_kwargs,
                                      reward_gamma=config.reward_gamma,
                                      cost_gamma=config.cost_gamma)
 
     # We don't need cost when taking samples
     sampling_env = utils.make_eval_env(env_id=config.train_env_id,
                                        use_cost_wrapper=False,  # cost is not needed when taking samples
-                                       normalize_obs=not config.dont_normalize_obs)
+                                       normalize_obs=not config.dont_normalize_obs, env_kwargs=env_kwargs)
 
     eval_env = utils.make_eval_env(env_id=config.eval_env_id,
                                    use_cost_wrapper=use_cost_wrapper_eval,
-                                   normalize_obs=not config.dont_normalize_obs)
+                                   normalize_obs=not config.dont_normalize_obs, env_kwargs=env_kwargs)
 
     is_discrete = isinstance(train_env.action_space, gym.spaces.Discrete)
     obs_dim = train_env.observation_space.shape[0]
@@ -139,7 +151,14 @@ def dscl(config):
         constraint_net._load(f'icrl/wandb/{config.loading_constraint_dir}/files/models/icrl_{config.loading_constraint_ite}_itrs/cn.pt')
 
     # passing the cost function to the cost wrapper
-    true_cost_function = get_true_cost_function(config.eval_env_id)
+    if config.train_env_id == 'KukaCup1-v0':
+        has_true_cost = eval_env.get_attr('true_constraint_available')[0]
+        true_cost_function = eval_env.get_attr('true_cost_function')[0] if has_true_cost else None
+        if not has_true_cost and (config.use_true_constraint or config.train_constraint_with_true_data):
+            raise ValueError('True-constraint training requires known task geometry')
+    else:
+        true_cost_function = get_true_cost_function(config.eval_env_id)
+        has_true_cost = True
     if config.use_true_constraint:
         train_env.set_cost_function(true_cost_function)
         plot_cost_function = true_cost_function
@@ -205,11 +224,16 @@ def dscl(config):
 
             # If specified, train cn with true data, which is used for generating expert demonstrations by running ds_policy.py
             if config.train_constraint_with_true_data:
-                feasible_obs, feasible_acs, infeasible_obs, infeasible_acs = utils.sample_true_labeled_data(true_cost_function, config.train_env_id)
+                feasible_obs, feasible_acs, infeasible_obs, infeasible_acs = utils.sample_true_labeled_data(
+                    true_cost_function, config.train_env_id, env_kwargs=env_kwargs)
                 backward_metrics = constraint_net.train_MECL_BC(config.backward_iters, feasible_obs, feasible_acs,
                                                                 infeasible_obs, infeasible_acs, None,
                                                                 config.WB_label_frequency)
 
+            elif config.constraint_learning_method == 'mecl':
+                backward_metrics = constraint_net.train_MECL_BC(
+                    config.backward_iters, expert_obs, expert_acs, nominal_obs_memory,
+                    nominal_acs_memory, nominal_len_memory, config.WB_label_frequency)
             else:
                 _, rn_nominal_obs, backward_metrics = constraint_net.train_with_two_step_pu_learning(
                     config.backward_iters, expert_obs, expert_acs, nominal_obs_memory, nominal_acs_memory,
@@ -219,6 +243,7 @@ def dscl(config):
         if config.train_env_id == 'KukaCup1-v0':
             utils.save_dict_as_json({
                 'iteration': itr,
+                'constraint_learning_method': config.constraint_learning_method,
                 'spe': bool(config.select_policy_excerpts),
                 'candidate_trajectories': int(len(expert_lengths) * config.rollouts_per_demonstration),
                 'retained_trajectories': int(len(nominal_len)),
@@ -226,7 +251,7 @@ def dscl(config):
                 'retained_returns': np.asarray(nominal_rew).reshape(-1).tolist(),
                 'memory_trajectories': int(len(nominal_len_memory)),
                 'memory_points': int(len(nominal_obs_memory)),
-                'reliable_infeasible_points': int(len(rn_nominal_obs)) if itr < config.n_iters else None,
+                'reliable_infeasible_points': int(len(rn_nominal_obs)) if rn_nominal_obs is not None and itr < config.n_iters else None,
             }, config.save_dir, f'sampling_{itr}')
         # --------------------------------
         # Save:
@@ -238,6 +263,7 @@ def dscl(config):
                              expert_lengths, obs_nominal=nominal_obs, rew_nominal=None, len_nominal=nominal_len,
                              policy_excerpt_rollout_num=None, obs_failed=None, obs_rn=rn_nominal_obs, gmm_learned=None,
                              query_obs=None, show=config.show_figures,
+                             env_kwargs=env_kwargs,
                              grad_function=constraint_net.build_gamma_with_grad_for_ds)
 
         # Periodically save model, evaluate model
@@ -264,7 +290,7 @@ def dscl(config):
             # evaluating the accuracy of constraint net
             accuracy_metrics = evaluate_constraint_accuracy(config.train_env_id,
                                                             constraint_net.cost_function_evaluation, true_cost_function,
-                                                            obs_dim, acs_dim)
+                                                            obs_dim, acs_dim, env_kwargs=env_kwargs) if has_true_cost else {}
             # # evaluating the accuracy of policy
             # test_obs, _, _, _, test_len = utils.sample_from_same_starting_points_as_demonstrations(nominal_agent,
             #                                                                                        eval_env, expert_obs,
@@ -282,11 +308,11 @@ def dscl(config):
                 train_env.save(os.path.join(path, f'{itr+1}_train_env_stats.pkl'))
 
         # Update best index
-        if average_true_cost < best_true_cost:
+        if has_true_cost and average_true_cost < best_true_cost:
             best_true_cost = average_true_cost
-        if accuracy_metrics['true/recall'] > best_recall:
+        if has_true_cost and accuracy_metrics['true/recall'] > best_recall:
             best_recall = accuracy_metrics['true/recall']
-        if accuracy_metrics['true/jaccard'] > best_jaccard:
+        if has_true_cost and accuracy_metrics['true/jaccard'] > best_jaccard:
             best_jaccard = accuracy_metrics['true/jaccard']
 
         if itr % config.eval_every == 0 or itr == config.n_iters - 1:
@@ -296,13 +322,13 @@ def dscl(config):
                     "iteration": itr,
                     "true/feasible_reward": average_true_feasible_reward,
                     "true/average_reward": average_true_reward,
-                    "true/violation_episodes_portion": 1 - true_safe_portion,
+                    "true/violation_episodes_portion": 1 - true_safe_portion if has_true_cost else None,
                     "true/violation_steps_portion": average_true_cost,
                     "true/average_episode_length": average_episode_length,
                     # "best_true/best_reward": best_true_reward,
-                    "best_true/best_cost": best_true_cost,
-                    "best_true/best_recall": best_recall,
-                    "best_true/best_jaccard": best_jaccard
+                    "best_true/best_cost": best_true_cost if has_true_cost else None,
+                    "best_true/best_recall": best_recall if has_true_cost else None,
+                    "best_true/best_jaccard": best_jaccard if has_true_cost else None
                     }
             metrics.update(backward_metrics)
             metrics.update(accuracy_metrics)
@@ -362,6 +388,8 @@ def main():
     # ======================== environments ========================= #
     parser.add_argument('--train_env_id', '-tei', type=str, default='PointCircle-v0')
     parser.add_argument('--eval_env_id', '-eei', type=str, default='PointCircleTest-v0')
+    parser.add_argument('--task_config_path', type=str, default=None,
+                        help='Task JSON passed to training, sampling, evaluation and plotting environments.')
     parser.add_argument('--dont_normalize_obs', '-dno', action='store_true')
     parser.add_argument('--dont_normalize_reward', '-dnr', action='store_true')
     parser.add_argument('--dont_normalize_cost', '-dnc', action='store_true')
@@ -398,6 +426,7 @@ def main():
     parser.add_argument('--per_step_importance_sampling', '-psis', action='store_true')
     # parser.add_argument('--reset_policy', '-rp', action='store_true')   # it creates new policies from scratch.
     parser.add_argument('--train_with_memory', '-twm', action='store_true')
+    parser.add_argument('--constraint_learning_method', choices=('pucl', 'mecl'), default='pucl')
     parser.add_argument('--policy_excerpts_weight', '-pew', type=float, default=1.)
     # ====================== constraint net ========================= #
     parser.add_argument('--cn_layers', '-cl', type=int, default=[4], nargs='*')
@@ -453,14 +482,20 @@ def main():
     # =============================================================== #
 
     default_config, mod_name = {}, ''
+    config_file = parser.parse_args().config_file
+    if config_file:
+        with open(config_file) as stream:
+            default_config = json.load(stream)
     # overwriting config file with parameters supplied through parser
     # order of priority: supplied through command line > specified in config file > default values in parser
     config = utils.merge_configs(default_config, parser, sys.argv[1:])
     # Resolve before naming/logging so saved configs contain the effective value.
     config['cn_smoothness_coeff'] = resolve_cn_smoothness_coeff(
-        config['train_env_id'], config.get('cn_smoothness_coeff'))
+        config['train_env_id'], config.get('cn_smoothness_coeff'), config['constraint_learning_method'])
     config['select_policy_excerpts'] = resolve_select_policy_excerpts(
-        config['train_env_id'], config.get('select_policy_excerpts'))
+        config['train_env_id'], config.get('select_policy_excerpts'), config['constraint_learning_method'])
+    if config['constraint_learning_method'] == 'mecl':
+        config['cn_loss_type'] = 'ml'
     # config = vars(argparse.Namespace(**config))
 
     if config['debug_mode']:  # this is for a fast debugging, use python train_icrl.py -dm to enable the debug model

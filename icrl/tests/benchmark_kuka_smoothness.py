@@ -59,6 +59,10 @@ def run_worker(args):
     if reference is not None:
         config.update(ds_modulation_with_refer_point=True, ds_reference_point=list(reference),
                       ds_modulation_rho=args.rho)
+    if getattr(args, 'method', 'pucl') == 'mecl':
+        config.update(constraint_learning_method='mecl', cn_loss_type='ml',
+                      cn_reg_coeff=args.reg_coeff, cn_smoothness_coeff=0.,
+                      select_policy_excerpts=False, add_rn_each_traj=False)
     assert not config['train_constraint_with_true_data'] and not config['use_true_constraint']
     assert not config['cn_normalize']
     (run / 'files').mkdir()

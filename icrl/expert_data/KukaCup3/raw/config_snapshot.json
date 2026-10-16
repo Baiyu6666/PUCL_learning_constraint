@@ -1,0 +1,400 @@
+{
+  "constraint": null,
+  "home": {
+    "captured_from": "Measured /iiwa7/joint_states seq 11397 at 2026-10-15T12:36:46.652192085Z; pose computed by iiwa7_link_7 FK",
+    "execution": {
+      "approach_speed_mps": 0.06
+    },
+    "frame_id": "iiwa7_link_0",
+    "joint_position_reference": [
+      -0.585480499350577,
+      0.8067716689663949,
+      0.20838338042026047,
+      -0.836269100899651,
+      -0.08680145330537715,
+      1.6464789241755622,
+      -2.3166612886328335
+    ],
+    "pose": {
+      "qw": -0.017770256425868235,
+      "qx": 0.8070652852857119,
+      "qy": -0.5856683894228996,
+      "qz": -0.07295464963960986,
+      "x": 0.5956094343763134,
+      "y": -0.3171814704898322,
+      "z": 0.5124110626187318
+    },
+    "schema_version": 1,
+    "task_id": "obsavoid"
+  },
+  "planning": null,
+  "robot_id": "iiwa7",
+  "robot_model": 7,
+  "robot_namespace": "iiwa7",
+  "ros_source_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+  "runtime_fingerprint": "cae7c97f7f30d24eb051c121ba32589de47635e882b96058ce1b3ff6b68bad85",
+  "scenario": {
+    "label": "demo_friday",
+    "notes": "",
+    "optional_topics": [
+      "/tf_static",
+      "/iiwa7/additional_outputs",
+      "/iiwa7/fri_diagnostics",
+      "/iiwa7/commanding_status",
+      "/iiwa7/SafeTorqueController/command",
+      "/stage_cons/plan"
+    ],
+    "required_topics": [
+      "/iiwa7/joint_states",
+      "/tf"
+    ]
+  },
+  "scene": null,
+  "schema_version": 1,
+  "setup": {
+    "default_task": "obsavoid",
+    "fri_cpu_affinity": 0,
+    "hardware_commissioned": true,
+    "id": "iiwa7_obsavoid",
+    "network": {
+      "host_ip": "192.170.10.1",
+      "host_prefix": 24,
+      "robot_ip": "192.170.10.2"
+    },
+    "notes": "Hardware startup enabled at user request. Scene, tool, home and safety settings remain examples requiring on-site verification; network addresses must be configured.",
+    "optitrack": {
+      "base": "iiwa7",
+      "object": "baiyu_bar",
+      "obstacle_a": "baiyu_obs_bar",
+      "obstacle_b": "baiyu_obs_bar_b",
+      "server": "128.178.145.104"
+    },
+    "optitrack_to_robot": {
+      "rotation": [
+        [
+          0,
+          0,
+          1
+        ],
+        [
+          1,
+          0,
+          0
+        ],
+        [
+          0,
+          1,
+          0
+        ]
+      ],
+      "translation": [
+        0,
+        0,
+        0
+      ]
+    },
+    "robot": {
+      "acceleration_limit_rad_s2": 1.5,
+      "base_frame": "iiwa7_link_0",
+      "ee_frame": "iiwa7_link_ee",
+      "external_torque_thresholds_nm": [
+        20,
+        20,
+        15,
+        15,
+        8,
+        8,
+        8
+      ],
+      "id": "iiwa7",
+      "joint_names": [
+        "iiwa7_joint_1",
+        "iiwa7_joint_2",
+        "iiwa7_joint_3",
+        "iiwa7_joint_4",
+        "iiwa7_joint_5",
+        "iiwa7_joint_6",
+        "iiwa7_joint_7"
+      ],
+      "joint_origins_rpy": [
+        [
+          0,
+          0,
+          0
+        ],
+        [
+          1.5707963267948966,
+          0,
+          3.141592653589793
+        ],
+        [
+          1.5707963267948966,
+          0,
+          3.141592653589793
+        ],
+        [
+          1.5707963267948966,
+          0,
+          0
+        ],
+        [
+          -1.5707963267948966,
+          3.141592653589793,
+          0
+        ],
+        [
+          1.5707963267948966,
+          0,
+          0
+        ],
+        [
+          -1.5707963267948966,
+          3.141592653589793,
+          0
+        ]
+      ],
+      "joint_origins_xyz": [
+        [
+          0,
+          0,
+          0.15
+        ],
+        [
+          0,
+          0,
+          0.19
+        ],
+        [
+          0,
+          0.21,
+          0
+        ],
+        [
+          0,
+          0,
+          0.19
+        ],
+        [
+          0,
+          0.21,
+          0
+        ],
+        [
+          0,
+          0.0607,
+          0.19
+        ],
+        [
+          0,
+          0.081,
+          0.0607
+        ]
+      ],
+      "max_demo_torque_nm": 6,
+      "max_sim_joint_force_nm": 250,
+      "model": 7,
+      "namespace": "iiwa7",
+      "tip_link": "iiwa7_link_7",
+      "velocity_scale": 0.25
+    },
+    "schema_version": 1,
+    "tasks": [
+      {
+        "config": "tasks/obsavoid.json",
+        "home": "tasks/obsavoid_home.json",
+        "id": "obsavoid"
+      }
+    ]
+  },
+  "setup_profile": "iiwa7_obsavoid",
+  "task": {
+    "axis_smooth_scale": 0.2,
+    "bar_axis_local": [
+      1.0,
+      0.0,
+      0.0
+    ],
+    "canonical_bar_axis": "tracker_frame",
+    "constraint_parameters": {},
+    "constraint_settling": {
+      "control_points": 4,
+      "max_progress_m": 0.008,
+      "progress_weight": 8.0,
+      "smoothness_scale": 0.15
+    },
+    "constraint_terms": [],
+    "constraint_transition": {
+      "fraction": 0.2,
+      "max_distance": 0.08,
+      "min_distance": 0.03
+    },
+    "default_pose_source": "KukaCup1/raw/demo_25.npz endpoints; fixed downward Tool-Z with demo start yaw",
+    "demonstration": {
+      "optional_topics": [
+        "/tf_static",
+        "/{robot}/additional_outputs",
+        "/{robot}/fri_diagnostics",
+        "/{robot}/commanding_status",
+        "/{robot}/SafeTorqueController/command",
+        "/stage_cons/plan"
+      ],
+      "optional_tracking_roles": [],
+      "required_topics": [
+        "/{robot}/joint_states",
+        "/tf"
+      ],
+      "required_tracking_roles": []
+    },
+    "display_name": "obsavoid",
+    "endpoint_coordinate_frame": "robot_base",
+    "evaluation_outcomes": [
+      "obs_avoid"
+    ],
+    "execution": {
+      "approach_clearance_z_m": null,
+      "approach_joint_bridge_limit_rad": 3.0,
+      "approach_obstacle_margin_m": 0.005,
+      "approach_position_tolerance_m": 0.01,
+      "approach_speed_mps": 0.126,
+      "backend": "cartesian_trajectory",
+      "minimum_approach_z_m": null,
+      "stage_transition_ramp_before_m": 0.02,
+      "stage_transition_speed_scale": 0.5,
+      "task_speed_mps": 0.084,
+      "task_start_ramp_m": 0.03
+    },
+    "feature_definition": {
+      "evaluation_point": "flange_origin",
+      "id": "base_pose_features_v1",
+      "obstacle_geometry": "none",
+      "tcp_offset_local": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "tool_axis_local": [
+        0.0,
+        0.0,
+        1.0
+      ],
+      "tool_yaw_axis_local": [
+        1.0,
+        0.0,
+        0.0
+      ]
+    },
+    "feature_evaluator": "base_pose",
+    "feature_units": {
+      "x": "m",
+      "y": "m",
+      "z": "m"
+    },
+    "gui": {
+      "default_goal": {
+        "qw": 0.0,
+        "qx": 0.7979419666342449,
+        "qy": -0.6027342846428049,
+        "qz": 0.0,
+        "x": 0.7528083834935012,
+        "y": 0.008945775623628305,
+        "z": 0.3971493416973506
+      },
+      "default_start": {
+        "qw": 0.0,
+        "qx": 0.7979419666342449,
+        "qy": -0.6027342846428049,
+        "qz": 0.0,
+        "x": 0.47923245182784685,
+        "y": -0.21664915172907773,
+        "z": 0.42574808471473363
+      },
+      "stage_names": [
+        "Forward"
+      ],
+      "template": "pose"
+    },
+    "obstacle_radius": 0.0,
+    "optimizer_weights": {
+      "axis_first": 0.1,
+      "axis_norm": 0.05,
+      "axis_second": 0.55,
+      "constraint": 3.0,
+      "position_first": 0.12,
+      "position_second": 0.65,
+      "yaw_first": 0.1,
+      "yaw_second": 0.55
+    },
+    "planner": {
+      "available_backends": [
+        "modulated_ds"
+      ],
+      "backend": "point_to_point",
+      "constraint_types": [
+        "neural_network"
+      ],
+      "control_spacing_m": 0.025,
+      "ds_goal_connect_distance_m": 0.01,
+      "ds_max_step_m": 0.004,
+      "ds_max_steps": 500,
+      "ds_modulation_with_refer_point": true,
+      "ds_reference_point": [
+        0.6,
+        -0.06
+      ],
+      "ds_rho": 0.2,
+      "ds_step_size": 0.008,
+      "endpoint_source": "task",
+      "max_control_points": 16,
+      "max_nfev": 400,
+      "min_control_points": 6,
+      "multi_start": 1,
+      "neural_position_margin_m": 0.005,
+      "output_axis_spacing_deg": 2.0,
+      "output_spacing_m": 0.005
+    },
+    "position_smooth_scale": 0.02,
+    "scene_required": false,
+    "scene_type": "none",
+    "schema_version": 2,
+    "simulation_initial_joint_positions": [
+      -0.30908288598220035,
+      0.45787705963589065,
+      -0.1522867066757738,
+      -1.6195483812321245,
+      0.07651976537474509,
+      1.0700017355985234,
+      -2.330429152924085
+    ],
+    "stage_endpoint_positions_bar": [
+      [
+        0.7528083834935012,
+        0.008945775623628305,
+        0.3971493416973506
+      ]
+    ],
+    "stage_names": [
+      "forward"
+    ],
+    "table_normal": [
+      0.0,
+      0.0,
+      1.0
+    ],
+    "table_surface_point": [
+      0.0,
+      0.0,
+      0.0
+    ],
+    "task_frame": {
+      "frame_id": "iiwa7_link_0",
+      "snapshot_policy": "frozen_per_task"
+    },
+    "task_id": "obsavoid",
+    "visualization_features": [
+      "x",
+      "y",
+      "z"
+    ],
+    "yaw_smooth_scale": 0.2
+  }
+}

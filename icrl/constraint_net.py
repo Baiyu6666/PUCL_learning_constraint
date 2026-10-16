@@ -962,7 +962,8 @@ def plot_constraints(cost_function, manual_threshold, position_limit, env, env_i
                           obs_nominal, obs_expert, len_expert, obs_rn)
     elif env_id == 'KukaCup1-v0':
         plot_for_KukaCup1(cost_function, manual_threshold, obs_dim, acs_dim, save_name,
-                          fig_title, obs_nominal, obs_expert, obs_rn, keep_open=show)
+                          fig_title, obs_nominal, obs_expert, obs_rn, keep_open=show,
+                          env_kwargs=kwargs.get('env_kwargs'))
     elif 'ReachObs' in env_id or 'Reach2Region' in env_id or 'ReachConcave' in env_id:
         plot_for_ReachObs(cost_function, manual_threshold, obs_dim, acs_dim, select_dim, save_name, fig_title,
                           obs_nominal, obs_expert, len_expert, len_nominal, obs_rn, **kwargs)
@@ -1336,10 +1337,10 @@ def plot_for_PointObs(cost_function, manual_threshold, obs_dim, acs_dim, save_na
 
     fig.savefig(save_name, bbox_inches='tight', pad_inches=0.02,dpi=300)
 
-def plot_for_KukaCup1(cost_function, threshold, obs_dim, acs_dim, save_name, title, obs_n, obs_e, obs_rn, keep_open=False):
-    env = gym.make('KukaCup1-v0')
+def plot_for_KukaCup1(cost_function, threshold, obs_dim, acs_dim, save_name, title, obs_n, obs_e, obs_rn, keep_open=False, env_kwargs=None):
+    env = gym.make('KukaCup1-v0', **(env_kwargs or {}))
     try:
-        low, high = env.workspace_low, env.workspace_high
+        low, high = env.plot_workspace_low, env.plot_workspace_high
         fig = plt.figure(figsize=(12, 5))
         ax = fig.add_subplot(121)
         X, Y = np.meshgrid(np.linspace(low[0], high[0], 160), np.linspace(low[1], high[1], 160))
@@ -1350,7 +1351,8 @@ def plot_for_KukaCup1(cost_function, threshold, obs_dim, acs_dim, save_name, tit
         if costs.min() < threshold < costs.max():
             ax.contour(X, Y, costs, [threshold], colors='black')
         fig.colorbar(image, ax=ax, label='constraint cost (z at workspace midpoint)')
-        ax.add_patch(plt.Circle(env.obstacle_center, env.obstacle_radius, fill=False, color='blue'))
+        if env.true_constraint_available:
+            ax.add_patch(plt.Circle(env.obstacle_center, env.obstacle_radius, fill=False, color='blue'))
         ax3d = fig.add_subplot(122, projection='3d')
         for values, color, label in [(obs_e, 'green', 'expert'), (obs_n, 'orange', 'policy'), (obs_rn, 'red', 'reliable infeasible')]:
             if values is not None and np.asarray(values).size:
@@ -1720,7 +1722,7 @@ def plot_for_ReachVel(cost_function, manual_threshold, obs_dim, acs_dim, cn_obs_
         raise NotImplementedError('The dimension of the observation is not supported')
 
 
-def evaluate_constraint_accuracy(env_id, learned_cost_function, true_cost_function, obs_dim, acs_dim,):
+def evaluate_constraint_accuracy(env_id, learned_cost_function, true_cost_function, obs_dim, acs_dim, env_kwargs=None):
 
         def collect_accuracy_metrics(label, pred):
             accuracy = (label == pred).mean()
@@ -1765,7 +1767,7 @@ def evaluate_constraint_accuracy(env_id, learned_cost_function, true_cost_functi
             learned_constraint = learned_cost_function(obs, action)
 
         elif env_id == 'KukaCup1-v0':
-            env = gym.make(env_id)
+            env = gym.make(env_id, **(env_kwargs or {}))
             try:
                 axes = [np.linspace(low, high, 40) for low, high in zip(env.workspace_low, env.workspace_high)]
                 X, Y, Z = np.meshgrid(*axes, indexing='ij')
