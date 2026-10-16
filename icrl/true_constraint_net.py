@@ -3,7 +3,6 @@ import copy
 import math
 
 import custom_envs
-import custom_envs.envs.utils as ce_utils
 import gym
 import numpy as np
 
@@ -84,6 +83,8 @@ def torque_constraint(threshold, obs, acs):
 # ============================================================================
 
 def bridges(env, obs, acs):
+    from custom_envs.envs.utils import in_regions
+
     obs = copy.deepcopy(obs)
     acs = copy.deepcopy(acs)
     if len(obs.shape) > 2:
@@ -118,7 +119,7 @@ def bridges(env, obs, acs):
             ob = next_ob[:2]
             next_ob = next_ob[:2]
 
-        if ce_utils.in_regions(ob, next_ob, env.constraint_regions):
+        if in_regions(ob, next_ob, env.constraint_regions):
             cost += [1]
         else:
             cost += [0]

@@ -8,6 +8,13 @@ pip install -r requirements.txt
 pip install -e ./custom_envs 
 ```
 
+MuJoCo is optional. Non-MuJoCo tasks use the base requirements above.
+For MuJoCo-backed tasks (such as Ant, HalfCheetah, Walker, and UR5),
+install `requirements-mujoco.txt` instead
+of `requirements.txt`, and set up the compatible MuJoCo runtime. Environment
+implementations are imported only when selected, so a missing MuJoCo installation
+does not prevent other tasks from starting.
+
 Training saves results locally by default; no WandB account is needed.
 
 To run any experiment present in the code, go to the main directory and run a command from the following list. Experiments typically take 10-30 minutes to complete.
