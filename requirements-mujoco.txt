@@ -1,0 +1,4 @@
+# Full dependencies for the optional MuJoCo environments.
+-r requirements.txt
+cython==0.29.32
+mujoco-py==2.0.2.13
